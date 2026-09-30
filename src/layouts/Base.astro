@@ -101,7 +101,10 @@ const og = new URL('/og.png', Astro.site).href;
   .hero-copy b { color: var(--text); font-weight: 600; }
   .actions { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 2rem; }
   .hero-visual { position: relative; max-width: 26rem; width: 100%; margin: 0 auto; aspect-ratio: 1; }
-  .poster { display: block; width: 100%; height: 100%; }
+  .poster { display: block; width: 100%; height: 100%; transition: opacity 0.4s; }
+  .hero-scene { position: absolute; inset: 0; opacity: 0; transition: opacity 0.4s; }
+  .hero-visual[data-live] .hero-scene { opacity: 1; }
+  .hero-visual[data-live] .poster { opacity: 0; }
   .poster .t { fill: #1c232c; }
   .poster .l { fill: #151b22; }
   .poster .r { fill: #10151b; }

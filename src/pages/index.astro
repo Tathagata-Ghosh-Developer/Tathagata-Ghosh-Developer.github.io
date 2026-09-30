@@ -1,5 +1,6 @@
 ---
 import Base from '../layouts/Base.astro';
+import HeroScene from '../components/HeroScene.tsx';
 import p from '../data/profile.json';
 
 // All facts come from profile.json. Copy written here only rephrases them.
@@ -107,6 +108,7 @@ const facts = [
           <path class="edge" d={edge} />
           {quads.map((q) => <polygon class={q.cls} points={q.points} />)}
         </svg>
+        <HeroScene client:visible />
       </div>
     </div>
 
@@ -249,7 +251,7 @@ const facts = [
     <div class="wrap">
       <p class="links"><a href={github}>GitHub</a> <a href={linkedin}>LinkedIn</a></p>
       <p>No email on this page by design; LinkedIn messages reach me.</p>
-      <p>Built with Astro and 30 timing runs where 5 were asked for.</p>
+      <p>Built with Astro, Three.js and 30 timing runs where 5 were asked for.</p>
     </div>
   </footer>
 
