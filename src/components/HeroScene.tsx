@@ -10,12 +10,18 @@
 // so the static HTML (and its SVG poster) paints first. The poster stays when there is no WebGL 2,
 // reduced motion is asked for (OS setting or the site's toggle), the device has 4 cores or fewer,
 // or the WebGL context is lost.
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 const N = 12, SLAB = 4, LIT = 16;
 const BG = '#0b0d10', BASE = '#3b4756', ACCENT = '#5cf29a';
 
 const live = (on: boolean) => document.getElementById('hero-visual')?.toggleAttribute('data-live', on);
+const nextTask = () => new Promise((r) => setTimeout(r, 0));
+// Resolves once the browser has painted the static page (or after 3 s where paint timing is missing).
+const painted = () => new Promise<void>((r) => {
+  setTimeout(r, 3000);
+  try { new PerformanceObserver((_, o) => { o.disconnect(); r(); }).observe({ type: 'paint', buffered: true }); } catch { r(); }
+});
 
 let webgl: boolean | undefined;
 function allowed() {
@@ -56,8 +62,12 @@ export default function HeroScene() {
   useEffect(() => {
     if (!on) { live(false); return; }
     if (!lib) {
-      Promise.all([import('three'), import('@react-three/fiber'), import('gsap'), import('gsap/ScrollTrigger')])
-        .then(([THREE, fiber, g, st]) => setLib({ THREE, fiber, gsap: g.gsap, ScrollTrigger: st.ScrollTrigger }))
+      painted()
+        .then(() => Promise.all([import('three'), import('@react-three/fiber'), import('gsap'), import('gsap/ScrollTrigger')]))
+        .then(async ([THREE, fiber, g, st]) => {
+          await nextTask(); // build the tensor in its own task, before React mounts the canvas
+          setLib({ THREE, fiber, gsap: g.gsap, ScrollTrigger: st.ScrollTrigger, t: build(THREE) });
+        })
         .catch(() => {});
     }
   }, [on]);
@@ -70,7 +80,10 @@ export default function HeroScene() {
           dpr={[1, 1.5]}
           flat
           frameloop={inView ? 'always' : 'demand'}
-          gl={{ antialias: true, alpha: true, powerPreference: 'low-power' }}
+          gl={async (defaults: any) => {
+            await nextTask(); // create the WebGL context in its own task, apart from React's mount work
+            return new lib.THREE.WebGLRenderer({ ...defaults, antialias: true, alpha: true, powerPreference: 'low-power' });
+          }}
           camera={{ position: [0, 0, 42], fov: 35 }}
           style={{ pointerEvents: 'none' }}
           onCreated={({ gl }: any) => gl.domElement.addEventListener('webglcontextlost', () => { lost.current = true; setOn(false); })}
@@ -91,8 +104,8 @@ function build(THREE: any) {
   tilt.add(spin);
   spin.rotation.y = Math.PI / 4; // start corner-on and tilted, like the SVG poster
   tilt.rotation.x = 0.7;
-  root.add(new THREE.AmbientLight(0xffffff, 1.6));
-  const key = new THREE.DirectionalLight(0xffffff, 3);
+  root.add(new THREE.AmbientLight(0xffffff, 0.9));
+  const key = new THREE.DirectionalLight(0xffffff, 3.4);
   key.position.set(5, 10, 8);
   const fill = new THREE.DirectionalLight(0x9db0c4, 1);
   fill.position.set(-8, -3, 5);
@@ -124,24 +137,37 @@ function build(THREE: any) {
 
 function Tensor({ lib }: { lib: any }) {
   const { THREE, fiber, gsap, ScrollTrigger } = lib;
-  const t = useMemo(() => build(THREE), [THREE]);
-  const scene = fiber.useThree((s: any) => s.scene);
-  const s = useRef({ goal: 0, p: 0, x: 0, y: 0, frames: 0 });
+  const t = lib.t;
+  const get = fiber.useThree((s: any) => s.get);
+  const s = useRef({ goal: 0, p: 0, x: 0, y: 0, frames: 0, ready: false });
 
   useEffect(() => {
+    const { gl, camera, scene } = get();
     scene.fog = new THREE.Fog(BG, 36, 60);
-    gsap.registerPlugin(ScrollTrigger);
-    const st = ScrollTrigger.create({
-      trigger: '#hero-visual',
-      start: 'clamp(top 60%)',
-      end: 'clamp(bottom 35%)',
-      onUpdate: (e: any) => { s.current.goal = e.progress; },
+    let alive = true, st: any;
+    // Shader compile and the scroll trigger each run in their own task, apart from React's mount work.
+    // compileAsync uses KHR_parallel_shader_compile, so the tensor joins the scene once its program is ready.
+    nextTask()
+      .then(() => alive && gl.compileAsync(t.root, camera, scene))
+      .catch(() => {})
+      .then(() => { if (alive) { scene.add(t.root); s.current.ready = true; } });
+    nextTask().then(() => {
+      if (!alive) return;
+      gsap.registerPlugin(ScrollTrigger);
+      st = ScrollTrigger.create({
+        trigger: '#hero-visual',
+        start: 'clamp(top 60%)',
+        end: 'clamp(bottom 35%)',
+        onUpdate: (e: any) => { s.current.goal = e.progress; },
+      });
+      s.current.goal = s.current.p = st.progress;
     });
-    s.current.goal = s.current.p = st.progress;
     const move = (e: PointerEvent) => { s.current.x = e.clientX / innerWidth - 0.5; s.current.y = e.clientY / innerHeight - 0.5; };
     addEventListener('pointermove', move, { passive: true });
     return () => {
-      st.kill();
+      alive = false;
+      scene.remove(t.root);
+      st?.kill();
       removeEventListener('pointermove', move);
       t.geo.dispose();
       t.mat.dispose();
@@ -177,9 +203,9 @@ function Tensor({ lib }: { lib: any }) {
     }
     t.glow = glow;
 
-    // useFrame runs before each render, so its second call means the first frame is on screen.
-    if (++c.frames === 2) live(true);
+    // useFrame runs before each render, so its second call with the tensor in the scene means that frame is on screen.
+    if (c.ready && ++c.frames === 2) live(true);
   });
 
-  return <primitive object={t.root} />;
+  return null;
 }

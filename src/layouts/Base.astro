@@ -105,6 +105,7 @@ const og = new URL('/og.png', Astro.site).href;
   .hero-scene { position: absolute; inset: 0; opacity: 0; transition: opacity 0.4s; }
   .hero-visual[data-live] .hero-scene { opacity: 1; }
   .hero-visual[data-live] .poster { opacity: 0; }
+  .rv { opacity: 0; transform: translateY(16px); } /* set by the reveal script, never under reduced motion */
   .poster .t { fill: #1c232c; }
   .poster .l { fill: #151b22; }
   .poster .r { fill: #10151b; }
