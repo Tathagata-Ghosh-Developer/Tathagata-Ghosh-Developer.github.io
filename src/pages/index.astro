@@ -134,8 +134,7 @@ const facts = [
           <p class="label">{thesis.degree} · {span(thesis.start, thesis.end)}</p>
           <h3>{thesis.title}</h3>
           <p class="meta">{thesis.short_title}</p>
-          <p>MATRIX Lab, Department of Computational and Data Sciences, IISc Bangalore: an ACM Gordon Bell Prize-winning lab. Supervisor: {thesis.supervisor}.</p>
-          <p class="muted">{sc.research.application_setting}</p>
+          <p>MATRIX Lab, Department of Computational and Data Sciences, IISc Bangalore (an ACM Gordon Bell Prize-winning lab), in collaboration with Argonne National Laboratory. Supervisor: {thesis.supervisor}.</p>
           <p set:html={sc.what.thesis} />
           <ul>{thesisBullets.map((b) => <li set:html={b} />)}</ul>
           <ul class="chips">{sc.research.stack.map((t) => <li>{t}</li>)}</ul>
