@@ -19,7 +19,7 @@ npm run build    # static output in dist/
 npm run preview  # serve dist/
 ```
 
-Pushing to `main` deploys to GitHub Pages through `.github/workflows/deploy.yml`.
+Pushing to `main` deploys to GitHub Pages through `.github/workflows/deploy.yml`. In the repository's Settings > Pages, set Source to "GitHub Actions". If it is left on "Deploy from a branch", GitHub also runs its own Jekyll build on every push. That build fails on the `.astro` files, so it never overwrites the site, but it marks each commit with a failed check.
 
 ## Files
 
