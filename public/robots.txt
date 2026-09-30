@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://tathagata-ghosh-developer.github.io/sitemap-index.xml

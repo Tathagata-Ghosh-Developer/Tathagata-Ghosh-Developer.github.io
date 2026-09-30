@@ -1,0 +1,269 @@
+---
+import Base from '../layouts/Base.astro';
+import p from '../data/profile.json';
+
+// All facts come from profile.json. Copy written here only rephrases them.
+const sc = p.site_copy;
+const { github, linkedin } = p.links;
+const find = (list, id) => list.find((x) => x.id === id);
+const month = (s) => new Date(s + '-01T00:00:00Z').toLocaleString('en-GB', { month: 'short', year: 'numeric', timeZone: 'UTC' });
+const span = (a, b) => `${month(a)} – ${b ? month(b) : 'present'}`;
+
+// Hero poster: an isometric N x N x N tensor of inset squares, 16 of them lit (the 16 GPUs).
+const N = 6, S = 26, W = N * S * 0.866;
+const pt = ([x, y, z]) => `${((x - y) * S * 0.866).toFixed(1)},${((x + y) * S * 0.5 - z * S).toFixed(1)}`;
+const cells = [];
+for (let a = 0; a < N; a++) for (let b = 0; b < N; b++) {
+  cells.push(['t', [[a, b, N], [a + 1, b, N], [a + 1, b + 1, N], [a, b + 1, N]]]);
+  cells.push(['r', [[N, a, b], [N, a + 1, b], [N, a + 1, b + 1], [N, a, b + 1]]]);
+  cells.push(['l', [[a, N, b], [a + 1, N, b], [a + 1, N, b + 1], [a, N, b + 1]]]);
+}
+let seed = 11;
+const lit = new Set();
+while (lit.size < 16) lit.add((seed = (seed * 16807) % 2147483647) % cells.length);
+const quads = cells.map(([face, q], i) => {
+  const c = [0, 1, 2].map((k) => q.reduce((s, v) => s + v[k], 0) / 4);
+  return { cls: lit.has(i) ? `${face} lit` : face, points: q.map((v) => pt(v.map((x, k) => c[k] + (x - c[k]) * 0.84))).join(' ') };
+});
+const edge = `M${pt([0, 0, N])}L${pt([N, 0, N])}L${pt([N, 0, 0])}L${pt([N, N, 0])}L${pt([0, N, 0])}L${pt([0, N, N])}Z` +
+  `M${pt([N, N, N])}L${pt([N, 0, N])}M${pt([N, N, N])}L${pt([0, N, N])}M${pt([N, N, N])}L${pt([N, N, 0])}`;
+const viewBox = `${(-W - 8).toFixed(1)} ${-N * S - 8} ${(2 * W + 16).toFixed(1)} ${2 * N * S + 16}`;
+
+const numbers = [
+  { n: '90x', what: 'HYDRA all-pairs shortest paths', cond: "Up to 90x over Sao et al.'s 2.5D algorithm on ego-Facebook (217.93 s vs 2.42 s), both run on the same cluster.", href: '#hydra', go: 'HYDRA' },
+  { n: '0.888', what: 'Strong-scaling efficiency on 16 GPUs', cond: 'Thesis, 1024³ tensor, FP32: 14.20x on 16 V100 GPUs across two nodes.', href: '#research', go: 'Research', id: 'scaling-number' },
+  { n: '3.17x', what: 'GPU longest common substring', cond: 'CUDA vs the best 72-thread OpenMP configuration on two 10⁸-character strings (0.649 s vs 2.029 s).', href: '#lcs-gpu', go: 'LCS project' },
+  { n: '8.7e-15', what: 'Energy identity, FP64', cond: 'Thesis: Theorem 4 / Corollary 6 holds to 8.7e-15 in FP64 (2.3e-5 in FP32).', href: '#research', go: 'Research' },
+];
+
+const thesis = p.research[0];
+const thesisBullets = [
+  sc.research.highlights[1],
+  sc.research.highlights[2],
+  '<b>Scales.</b> Strong scaling on a 1024³ tensor: 7.89x on 8 GPUs (efficiency 0.986) and 14.20x on 16 GPUs (0.888) in FP32, 15.77x on 16 GPUs in FP64.',
+  sc.research.highlights[4],
+];
+
+const flagship = [
+  ['hydra', [2, 3, 4]],
+  ['tensor-hadamard', [2, 1]],
+  ['lcs-gpu', [2, 3]],
+  ['dftfe-clap', [0, 1]],
+  ['air-b-n-c', [0, 2]],
+  ['nlp-lm-rl', [0, 1]],
+].map(([id, picks]) => ({ ...find(p.projects, id), picks, aside: sc.projects[id]?.aside }));
+
+const also = ['kmeans-spmv', 'edgeai-imu', 'mlds-segmentation', 'video2pdf', 'isdc-website', 'hardware-trojan-gnn', 'logic-locking-alu', 'facial-keypoint-login', 'iic-innovation-archive']
+  .map((id) => { const x = find(p.projects, id), c = sc.projects[id] ?? {}; return { name: x.name, text: c.more ?? c.result ?? x.subtitle }; });
+
+const experience = [['rmes', [1, 3, 4]], ['ibm-intern', [1]], ['iiest-research-intern', [2]]]
+  .map(([id, picks]) => ({ ...find(p.experience, id), picks }));
+
+const topGrades = p.education[0].coursework.filter((c) => c.grade === 'A+' || c.grade === 'A').map((c) => `${c.name} (${c.grade})`).join(', ');
+const ta = p.teaching[0];
+
+const facts = [
+  "Google printed 'Mr. Nasamajh Engineerwala' on my Hash Code certificate. Nasamajh means clueless. I kept it: it is still my GitHub display name.",
+  'I keep the ledger for the Aryabhatta Cat Welfare Fund, so the campus cats at IISc have a treasurer.',
+  'As Mess President I answer to 800+ residents about lunch, which is a harder distributed-consensus problem than anything in my thesis.',
+  "I built the website for IISc's Durga Puja festival (ISDC 2026) in TypeScript and also handle the committee's finances: possibly the only member who has argued with both a compiler and an invoice in the same week.",
+  'When an assignment asked for 5 timing runs, I ran 30 (plus 5 warm-ups) and cited the Central Limit Theorem in the report. Twice.',
+  'My first full thesis benchmark measured a truncation that truncated nothing: the threshold compared local against global energy and never fired on more than one GPU. A distributed bisection fixed it, and the threshold is now bit-identical on 1, 2, 4 and 8 GPUs.',
+];
+---
+<Base title={sc.title} description={sc.description}>
+  <a class="skip" href="#projects">Skip to projects</a>
+
+  <header class="wrap nav">
+    <a class="brand" href="/">{p.name}</a>
+    <nav aria-label="Main">
+      <ul>
+        <li><a href="#projects">Projects</a></li>
+        <li><a href="#research">Research</a></li>
+        <li><a href="#experience">Experience</a></li>
+        <li><a href="#off-duty">Off duty</a></li>
+        <li><a href={github}>GitHub</a></li>
+        <li><a href={linkedin}>LinkedIn</a></li>
+      </ul>
+    </nav>
+    <button class="toggle" id="motion-toggle" type="button" aria-pressed="false">Reduce motion</button>
+  </header>
+
+  <main id="main">
+    <div class="wrap hero">
+      <div class="hero-copy">
+        <p class="kicker">{sc.hero.kicker}</p>
+        <h1>{p.name}</h1>
+        <p class="headline">{sc.hero.headline}</p>
+        {sc.hero.lines.map((l) => <p class="lead" set:html={l} />)}
+        <div class="actions">
+          <a class="btn primary" href="#projects">See projects</a>
+          <a class="btn" href={github}>GitHub</a>
+          <a class="btn" href={linkedin}>LinkedIn</a>
+        </div>
+      </div>
+      <div class="hero-visual" id="hero-visual">
+        <svg class="poster" viewBox={viewBox} role="img" aria-label="A cube-shaped tensor drawn as small squares, sixteen of them lit green like busy GPUs">
+          <path class="edge" d={edge} />
+          {quads.map((q) => <polygon class={q.cls} points={q.points} />)}
+        </svg>
+      </div>
+    </div>
+
+    <section class="numbers" aria-labelledby="numbers-h">
+      <div class="wrap">
+        <h2 class="label" id="numbers-h">The numbers, with their conditions</h2>
+        <div class="tiles">
+          {numbers.map((t) => (
+            <a class="tile" href={t.href}>
+              <span class="n mono" id={t.id}>{t.n}</span>
+              <span class="what">{t.what}</span>
+              <span class="cond">{t.cond}</span>
+              <span class="go">Proof: {t.go} ↓</span>
+            </a>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <section id="research" aria-labelledby="research-h">
+      <div class="wrap">
+        <h2 id="research-h">Research</h2>
+        <p class="intro">{sc.research.intro}</p>
+        <article class="card thesis">
+          <p class="label">{thesis.degree} · {span(thesis.start, thesis.end)}</p>
+          <h3>{thesis.title}</h3>
+          <p class="meta">{thesis.short_title}</p>
+          <p>MATRIX Lab, Department of Computational and Data Sciences, IISc Bangalore: an ACM Gordon Bell Prize-winning lab. Supervisor: {thesis.supervisor}.</p>
+          <p class="muted">{sc.research.application_setting}</p>
+          <p set:html={sc.what.thesis} />
+          <ul>{thesisBullets.map((b) => <li set:html={b} />)}</ul>
+          <ul class="chips">{sc.research.stack.map((t) => <li>{t}</li>)}</ul>
+        </article>
+      </div>
+    </section>
+
+    <section id="projects" aria-labelledby="projects-h">
+      <div class="wrap">
+        <h2 id="projects-h">Projects</h2>
+        <p class="intro">{sc.projects_intro}</p>
+        <div class="grid">
+          {flagship.map((x) => (
+            <article class="card" id={x.id}>
+              <h3>{x.name}</h3>
+              <p class="meta">{x.context}{x.start && ` · ${span(x.start, x.end)}`}</p>
+              <p>{x.subtitle}</p>
+              <ul>{x.picks.map((i) => <li>{x.bullets[i].text}</li>)}</ul>
+              {x.aside && <p class="aside">{x.aside}</p>}
+              <ul class="chips">{x.tech.map((t) => <li>{t}</li>)}</ul>
+              <a class="proof" href={x.repo ?? github}>{x.repo ? 'Proof: source code' : 'Proof: GitHub profile'}<span class="sr"> ({x.name})</span> →</a>
+            </article>
+          ))}
+        </div>
+        <h3 class="sub">Also built</h3>
+        <ul class="also">
+          {also.map((x) => <li><b>{x.name}.</b> <span set:html={x.text} /></li>)}
+        </ul>
+      </div>
+    </section>
+
+    <section id="experience" aria-labelledby="experience-h">
+      <div class="wrap">
+        <h2 id="experience-h">Experience</h2>
+        <p class="intro">{sc.experience_intro}</p>
+        <div class="grid">
+          {experience.map((x) => (
+            <article class="card">
+              <h3>{x.title}</h3>
+              <p class="meta">{x.org} · {x.location} · {span(x.start, x.end)}</p>
+              <p>{x.one_liner}</p>
+              <ul>{x.picks.map((i) => <li>{x.bullets[i].text}</li>)}</ul>
+              <ul class="chips">{x.tech.map((t) => <li>{t}</li>)}</ul>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <section id="education" aria-labelledby="education-h">
+      <div class="wrap">
+        <h2 id="education-h">Education</h2>
+        <div class="grid">
+          {p.education.map((e, i) => (
+            <article class="card">
+              <h3>{e.degree}</h3>
+              <p class="meta">{e.institution} · {e.start ? `${e.start.slice(0, 4)} – ${e.end.slice(0, 4)}` : e.end.slice(0, 4)}</p>
+              <p><span class="mono" style="color:var(--accent)">{e.score_label === 'Percentage' ? e.score : `${e.score_label} ${e.score}`}</span></p>
+              {i === 0 && (
+                <>
+                  <p class="muted">Top grades: {topGrades}.</p>
+                  <p class="muted">{ta.role}, {ta.course}, {ta.term}. <em>{sc.teaching_aside}</em></p>
+                </>
+              )}
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <section id="skills" aria-labelledby="skills-h">
+      <div class="wrap">
+        <h2 id="skills-h">Skills</h2>
+        <p class="intro">{sc.skills_intro}</p>
+        <div class="skills">
+          {sc.skills_order.map((k) => (
+            <div>
+              <h3>{sc.skills_labels[k]}</h3>
+              <ul class="chips">{p.skills[k].map((s) => <li>{s}</li>)}</ul>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <section id="off-duty" aria-labelledby="off-duty-h">
+      <div class="wrap">
+        <h2 id="off-duty-h">Off duty</h2>
+        <p class="intro">{sc.leadership_intro}</p>
+        <div class="grid">
+          {facts.map((f) => <div class="card fact"><p>{f}</p></div>)}
+        </div>
+      </div>
+    </section>
+
+    <section id="leadership" aria-labelledby="leadership-h">
+      <div class="wrap">
+        <h2 id="leadership-h">Leadership</h2>
+        <ul class="lead-list">
+          {p.leadership.map((l) => (
+            <li>
+              <b>{l.role}</b>
+              <span>{l.org}{l.start && ` · ${span(l.start, l.end)}`}. {l.text}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <p class="links"><a href={github}>GitHub</a> <a href={linkedin}>LinkedIn</a></p>
+      <p>No email on this page by design; LinkedIn messages reach me.</p>
+      <p>Built with Astro and 30 timing runs where 5 were asked for.</p>
+    </div>
+  </footer>
+
+  <script is:inline>
+    (() => {
+      const b = document.getElementById('motion-toggle'), h = document.documentElement;
+      const set = (on) => { if (on) h.dataset.motion = 'reduce'; else delete h.dataset.motion; b.setAttribute('aria-pressed', String(on)); };
+      set(h.dataset.motion === 'reduce');
+      b.addEventListener('click', () => {
+        const on = h.dataset.motion !== 'reduce';
+        set(on);
+        try { localStorage.setItem('motion', on ? 'reduce' : ''); } catch (e) {}
+      });
+    })();
+  </script>
+</Base>
