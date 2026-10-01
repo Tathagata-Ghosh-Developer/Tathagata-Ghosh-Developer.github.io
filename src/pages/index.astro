@@ -9,6 +9,7 @@ const { github, linkedin } = p.links;
 const find = (list, id) => list.find((x) => x.id === id);
 const month = (s) => new Date(s + '-01T00:00:00Z').toLocaleString('en-GB', { month: 'short', year: 'numeric', timeZone: 'UTC' });
 const span = (a, b) => `${month(a)} – ${b ? month(b) : 'present'}`;
+const arrow = (s) => s.replace(/ ?-> ?/g, ' → ');
 
 // Hero poster: an isometric N x N x N tensor of inset squares, 16 of them lit (the 16 GPUs).
 const N = 6, S = 26, W = N * S * 0.866;
@@ -57,7 +58,7 @@ const flagship = [
 const also = ['kmeans-spmv', 'edgeai-imu', 'mlds-segmentation', 'video2pdf', 'isdc-website', 'hardware-trojan-gnn', 'logic-locking-alu', 'facial-keypoint-login', 'iic-innovation-archive']
   .map((id) => { const x = find(p.projects, id), c = sc.projects[id] ?? {}; return { name: x.name, text: c.more ?? c.result ?? x.subtitle }; });
 
-const experience = [['rmes', [1, 3, 4]], ['ibm-intern', [1]], ['iiest-research-intern', [2]]]
+const experience = [['rmes', [1, 3, 4]], ['ibm-intern', [0]], ['iiest-research-intern', [2]]]
   .map(([id, picks]) => ({ ...find(p.experience, id), picks }));
 
 const topGrades = p.education[0].coursework.filter((c) => c.grade === 'A+' || c.grade === 'A').map((c) => `${c.name} (${c.grade})`).join(', ');
@@ -154,7 +155,7 @@ const facts = [
               <h3>{x.name}</h3>
               <p class="meta">{x.context}{x.start && ` · ${span(x.start, x.end)}`}</p>
               <p>{x.subtitle}</p>
-              <ul>{x.picks.map((i) => <li>{x.bullets[i].text}</li>)}</ul>
+              <ul>{x.picks.map((i) => <li>{arrow(x.bullets[i].text)}</li>)}</ul>
               {x.aside && <p class="aside">{x.aside}</p>}
               <ul class="chips">{x.tech.map((t) => <li>{t}</li>)}</ul>
               <a class="proof" href={x.repo ?? github}>{x.repo ? 'Proof: source code' : 'Proof: GitHub profile'}<span class="sr"> ({x.name})</span> →</a>
@@ -178,7 +179,7 @@ const facts = [
               <h3>{x.title}</h3>
               <p class="meta">{x.org} · {x.location} · {span(x.start, x.end)}</p>
               <p>{x.one_liner}</p>
-              <ul>{x.picks.map((i) => <li>{x.bullets[i].text}</li>)}</ul>
+              <ul>{x.picks.map((i) => <li>{arrow(x.bullets[i].text)}</li>)}</ul>
               <ul class="chips">{x.tech.map((t) => <li>{t}</li>)}</ul>
             </article>
           ))}
@@ -251,7 +252,7 @@ const facts = [
     <div class="wrap">
       <p class="links"><a href={github}>GitHub</a> <a href={linkedin}>LinkedIn</a></p>
       <p>No email on this page by design; LinkedIn messages reach me.</p>
-      <p>Built with Astro, Three.js and 30 timing runs where 5 were asked for.</p>
+      <p>Built with Astro and Three.js. Every number on this page is a measured one.</p>
     </div>
   </footer>
 

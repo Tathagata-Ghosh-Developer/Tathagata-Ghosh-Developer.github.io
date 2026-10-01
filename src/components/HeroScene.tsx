@@ -17,11 +17,14 @@ const BG = '#0b0d10', BASE = '#3b4756', ACCENT = '#5cf29a';
 
 const live = (on: boolean) => document.getElementById('hero-visual')?.toggleAttribute('data-live', on);
 const nextTask = () => new Promise((r) => setTimeout(r, 0));
-// Resolves once the browser has painted the static page (or after 3 s where paint timing is missing).
+// Resolves once the browser has painted the static page (or after 3 s where paint timing is missing),
+// the load event has fired and the main thread is idle, so the hero's work never lands in the load window.
 const painted = () => new Promise<void>((r) => {
   setTimeout(r, 3000);
   try { new PerformanceObserver((_, o) => { o.disconnect(); r(); }).observe({ type: 'paint', buffered: true }); } catch { r(); }
-});
+})
+  .then(() => new Promise<void>((r) => (document.readyState === 'complete' ? r() : addEventListener('load', () => r(), { once: true }))))
+  .then(() => new Promise<void>((r) => ('requestIdleCallback' in window ? (window as any).requestIdleCallback(() => r(), { timeout: 1500 }) : setTimeout(r, 300))));
 
 let webgl: boolean | undefined;
 function allowed() {
