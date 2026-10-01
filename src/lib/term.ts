@@ -373,9 +373,10 @@ stage.addEventListener('pointerup', (e) => {
 });
 // Typing anywhere on the page (outside links and buttons) goes to the shell.
 addEventListener('keydown', (e) => {
-  touched();
   const t = e.target as HTMLElement;
-  if (t === inp || plain() || t.closest('a, button, input, textarea')) return;
+  if (t === inp) return; // the input's own handler has run (and may just have run `sleep`)
+  touched();
+  if (plain() || t.closest('a, button, input, textarea')) return;
   if (e.key.length === 1 && e.key !== ' ' && !e.ctrlKey && !e.metaKey && !e.altKey) inp.focus({ preventScroll: true });
 });
 

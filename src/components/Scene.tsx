@@ -143,7 +143,7 @@ function build(THREE: any, term: any) {
         vec3 col = t * 1.35 + vec3(0.004, 0.014, 0.008);                   // phosphor glow on a dark tube
         col *= 1.0 - 0.45 * smoothstep(0.25, 0.75, length(c));
         col *= 0.96 + 0.04 * sin(uTime * 60.0);                              // mains flicker
-        col *= 1.0 - 0.85 * step(hash(floor(uv * vec2(96.0, 72.0))), uDream * 1.05); // the text dissolves into the dream
+        col *= 1.0 - 0.85 * step(hash(floor(uv * vec2(96.0, 72.0))), uDream * 1.05) * step(0.001, uDream); // the text dissolves into the dream
         gl_FragColor = vec4(col * edge * uDim, 1.0);
       }`,
   });
@@ -222,6 +222,55 @@ function build(THREE: any, term: any) {
     for (let v = t0; prev[v] >= 0; v = prev[v]) { const u = prev[v]; path.unshift([edges.findIndex(([i, j]) => (i === u && j === v) || (i === v && j === u)), edges[edges.findIndex(([i, j]) => (i === u && j === v) || (i === v && j === u))][0] === u]); }
     return path;
   };
+  // Off duty. Steam: 150 points rising from the cup (GPU-animated), bending toward the pointer; `make chai`
+  // bursts it. Sleep: drifting z's above the CRT. Adda: chat bubbles over the cup.
+  const pts = (n: number, size: number, frag: string, map?: any) => {
+    const g = new THREE.BufferGeometry(), seed = new Float32Array(n * 3);
+    for (let i = 0; i < seed.length; i++) seed[i] = Math.random();
+    g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 3), 3));
+    g.setAttribute('seed', new THREE.BufferAttribute(seed, 3));
+    const u = { uTime: { value: 0 }, uAmt: { value: 0 }, uBend: { value: new THREE.Vector2() }, uSize: { value: size }, map: { value: map } };
+    const m = new THREE.Points(g, new THREE.ShaderMaterial({
+      uniforms: u, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+      vertexShader: `attribute vec3 seed; uniform float uTime, uAmt, uSize; uniform vec2 uBend; varying float vA;
+        void main(){
+          float life = fract(uTime * (0.18 + 0.12 * seed.x) * (1.0 + uAmt) + seed.y);
+          vec3 p = vec3(sin(life * 7.0 + seed.z * 6.28) * 0.012 * (1.0 + 2.5 * life), life * (0.26 + 0.1 * uAmt), cos(life * 5.0 + seed.x * 6.28) * 0.01 * (1.0 + 2.0 * life));
+          p.xz += uBend * life * life * 0.15;
+          vec4 mv = modelViewMatrix * vec4(p, 1.0);
+          vA = sin(life * 3.14159) * (0.35 + 0.65 * min(uAmt, 1.0)) * step(0.001, uAmt);
+          gl_PointSize = uSize * (0.6 + life) / -mv.z;
+          gl_Position = projectionMatrix * mv;
+        }`,
+      fragmentShader: frag,
+    }));
+    m.frustumCulled = false;
+    return { m, u };
+  };
+  const steam = pts(150, 8, `varying float vA; void main(){ float d = length(gl_PointCoord - 0.5); gl_FragColor = vec4(vec3(0.95, 0.9, 0.82) * vA * smoothstep(0.5, 0.0, d) * 0.3, 1.0); }`);
+  steam.m.position.set(0, 0.08, 0); cup.add(steam.m);
+  const zc = document.createElement('canvas'); zc.width = zc.height = 64;
+  const zx = zc.getContext('2d')!; zx.fillStyle = '#fff'; zx.font = 'bold 52px ui-monospace, Consolas, monospace'; zx.textAlign = 'center'; zx.textBaseline = 'middle'; zx.fillText('z', 32, 34);
+  const zs = pts(14, 60, `uniform sampler2D map; varying float vA; void main(){ gl_FragColor = vec4(vec3(0.75, 0.85, 1.0) * texture2D(map, gl_PointCoord).a * vA, 1.0); }`, new THREE.CanvasTexture(zc));
+  zs.m.position.set(0.12, SCREEN_Y + SH / 2 + 0.12, SCREEN_Z + 0.08); zs.m.scale.set(6, 2.2, 6); root.add(zs.m);
+  const bubble = () => {
+    const c = document.createElement('canvas'); c.width = 512; c.height = 128;
+    const map = new THREE.CanvasTexture(c); map.colorSpace = THREE.SRGBColorSpace;
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map, transparent: true, depthWrite: false })); sp.visible = false; sp.position.set(0.47, 0.93, 0.16); root.add(sp);
+    const draw = (text: string) => {
+      const x = c.getContext('2d')!; x.clearRect(0, 0, 512, 128);
+      x.fillStyle = 'rgba(14,10,4,0.92)'; x.strokeStyle = '#f2b35c'; x.lineWidth = 4;
+      x.beginPath(); x.roundRect(6, 6, 500, 96, 22); x.moveTo(60, 102); x.lineTo(46, 124); x.lineTo(86, 102); x.fill(); x.stroke();
+      x.fillStyle = '#ffecd0'; x.font = '26px ui-monospace, Consolas, monospace'; x.textBaseline = 'middle';
+      const words = text.split(' '), rows = [''];
+      for (const wd of words) { if (x.measureText(rows[rows.length - 1] + ' ' + wd).width > 460) rows.push(wd); else rows[rows.length - 1] = (rows[rows.length - 1] + ' ' + wd).trim(); }
+      rows.slice(0, 2).forEach((r, i) => x.fillText(r, 26, rows.length > 1 ? 36 + i * 34 : 54));
+      map.needsUpdate = true;
+    };
+    return { sp, draw, text: '' };
+  };
+  w.off = { steam, zs, bubbles: [bubble(), bubble()], addaAt: 0, wheel: 0, popAt: 0 };
+
   w.hydra = { graph, nodes, cells, edges, route, path: route(0, 7), ends: [0, 7], routeAt: 0, c: new THREE.Color() };
 
   // lights: ambient, the screen's glow, a warm lamp for chai, moonlight through the window
@@ -381,6 +430,30 @@ function World({ lib }: { lib: any }) {
       });
       H.graph.instanceColor.needsUpdate = true;
     }
+
+    // off duty
+    const O = w.off, idle = Math.min(1, (now - scene.lastInput) / 60000);
+    const burst = Math.max(0, 1 - (now - scene.burstAt) / 5000);
+    O.steam.u.uTime.value = t; O.steam.u.uAmt.value = scene.warm || scene.view === 'chai' || burst > 0 ? 0.45 + 1.6 * burst : 0;
+    O.steam.u.uBend.value.set(c.px, c.py * 0.5);
+    O.zs.u.uTime.value = t * 0.6; O.zs.u.uAmt.value += ((scene.sleep ? 0.9 : 0) - O.zs.u.uAmt.value) * k;
+    // the wheels follow scroll velocity even off camera, and pedal on `ride`
+    const spin = Math.min(14, Math.abs(scene.vel) / 250) + (scene.ride ? 5 : 0);
+    O.wheel += (spin - O.wheel) * Math.min(1, dt * 3); scene.vel *= Math.exp(-dt * 2.5);
+    w.wheels.forEach((g: any) => { g.rotation.z -= O.wheel * dt; });
+    // the moon rises a little with idle time and brightens in sleep
+    w.moon.position.y = 1.66 + 0.18 * idle;
+    // adda: a new fact pops a bubble over the cup; the previous one moves up and fades
+    const [cur, prev] = O.bubbles;
+    if (scene.addaAt !== O.addaAt) {
+      O.addaAt = scene.addaAt; O.popAt = now;
+      if (cur.text) { prev.draw(cur.text); prev.text = cur.text; }
+      cur.draw(scene.adda); cur.text = scene.adda;
+    }
+    const pop = Math.min(1, (now - O.popAt) / 260), ov = 1 + 0.15 * Math.sin(pop * Math.PI);
+    cur.sp.visible = !!scene.adda; cur.sp.scale.set(0.3 * pop * ov, 0.075 * pop * ov, 1);
+    prev.sp.visible = !!scene.adda && !!prev.text; prev.sp.scale.set(0.24, 0.06, 1); prev.sp.position.y = 0.93 + 0.075 * pop; prev.sp.material.opacity = 0.45;
+    if (!scene.adda) cur.text = prev.text = '';
 
     // post pass
     gl.getDrawingBufferSize(c.buf);
