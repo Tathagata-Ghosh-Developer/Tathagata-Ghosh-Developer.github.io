@@ -16,6 +16,8 @@ export const scene = {
   loadAt: 0, // `top`: the LED pulses with "load"
   keyAt: 0, // phosphor flicker on keypress
   hopAt: 0, // ssh: the map hop starts
+  dragAt: 0, // dragging on the screen: the campus voxels wobble
+  routeAt: 0, // a click with the HYDRA graph out: pick a new shortest path
   vel: 0, // scroll velocity (px/s), for the bicycle wheels
   lastInput: 0, // for the moon and the idle sleep
   tex: 0, // bumped whenever the terminal canvas changes (CanvasTexture upload)

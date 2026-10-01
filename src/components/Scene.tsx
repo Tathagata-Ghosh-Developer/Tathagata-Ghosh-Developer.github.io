@@ -10,6 +10,7 @@
 // The terminal keeps working in 2D whenever this does not run or the WebGL context is lost.
 import { useEffect, useRef, useState } from 'react';
 import { scene } from '../lib/store';
+import { campus, mesh, timeline } from '../lib/voxel';
 
 const host = () => document.getElementById('hero-visual');
 const live = (on: boolean) => host()?.toggleAttribute('data-live', on);
@@ -132,9 +133,9 @@ function build(THREE: any, term: any) {
   const map = new THREE.CanvasTexture(term.canvas);
   map.colorSpace = THREE.SRGBColorSpace; map.minFilter = THREE.LinearFilter; map.generateMipmaps = false;
   const screenMat = new THREE.ShaderMaterial({
-    uniforms: { map: { value: map }, uTime: { value: 0 }, uDim: { value: 1 } },
+    uniforms: { map: { value: map }, uTime: { value: 0 }, uDim: { value: 1 }, uDream: { value: 0 } },
     vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
-    fragmentShader: `uniform sampler2D map; uniform float uTime, uDim; varying vec2 vUv;
+    fragmentShader: `uniform sampler2D map; uniform float uTime, uDim, uDream; varying vec2 vUv; float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
       void main(){
         vec2 c = vUv - 0.5; vec2 uv = vUv + c * dot(c, c) * 0.1;            // tube curvature
         vec3 t = texture2D(map, uv).rgb;
@@ -142,6 +143,7 @@ function build(THREE: any, term: any) {
         vec3 col = t * 1.35 + vec3(0.004, 0.014, 0.008);                   // phosphor glow on a dark tube
         col *= 1.0 - 0.45 * smoothstep(0.25, 0.75, length(c));
         col *= 0.96 + 0.04 * sin(uTime * 60.0);                              // mains flicker
+        col *= 1.0 - 0.85 * step(hash(floor(uv * vec2(96.0, 72.0))), uDream * 1.05); // the text dissolves into the dream
         gl_FragColor = vec4(col * edge * uDim, 1.0);
       }`,
   });
@@ -162,13 +164,74 @@ function build(THREE: any, term: any) {
   };
   w.makeCRT(term.aspect());
 
+  // The dream: each campus is one InstancedMesh of voxels (0.02 m each) above the desk, in front of the
+  // screen; its voxels start at random points on the screen and fly to their slots (on the GPU).
+  const V = 0.02, BASE = new THREE.Vector3(0, 0.8, 0.16);
+  w.campuses = {};
+  w.buildCampus = (id: 'iisc' | 'iiest') => {
+    const vox = campus(id), W = 1 + Math.max(...vox.map((p) => p.x)), D = 1 + Math.max(...vox.map((p) => p.z));
+    const g = new THREE.Group(); g.position.copy(BASE); g.scale.setScalar(V); g.visible = false; root.add(g);
+    const off = new THREE.Vector3(-W / 2, 0, -D / 2);
+    const { im, u } = mesh(THREE, vox, () => {
+      const p = new THREE.Vector3((Math.random() - 0.5) * w.sw, SCREEN_Y + (Math.random() - 0.5) * SH, SCREEN_Z + 0.01);
+      return p.sub(BASE).divideScalar(V).sub(off).toArray();
+    });
+    im.position.copy(off); g.add(im);
+    return (w.campuses[id] = { g, u, p: 0, n: vox.length });
+  };
+  // the pixel timeline under the campus: a canvas texture on a tilted plane
+  const tl = document.createElement('canvas'); tl.width = 1024; tl.height = 150;
+  const tlMap = new THREE.CanvasTexture(tl); tlMap.colorSpace = THREE.SRGBColorSpace;
+  const tlMat = new THREE.MeshBasicMaterial({ map: tlMap, transparent: true, opacity: 0, depthWrite: false });
+  const tlMesh = add(new THREE.PlaneGeometry(0.92, 0.135), tlMat, 0, 0.79, 0.46); tlMesh.rotation.x = -0.9; tlMesh.visible = false;
+  w.drawTimeline = (id: 'iisc' | 'iiest') => {
+    const c = tl.getContext('2d')!;
+    c.clearRect(0, 0, tl.width, tl.height); c.fillStyle = 'rgba(2,10,5,0.75)'; c.fillRect(0, 0, tl.width, tl.height);
+    timeline(c, id, 30, 78, tl.width - 60, 22, { bg: '#020a05', fg: '#5cf29a', dim: '#3f9c6c', hi: '#d2ffe6' });
+    tlMap.needsUpdate = true;
+  };
+  Object.assign(w, { tlMat, tlMesh });
+
+  // HYDRA: a voxel graph on the desk (left of the CRT); the shortest path between two nodes pulses.
+  const nodes: number[][] = [];
+  let sd = 5; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 12; i++) nodes.push([-0.78 + rnd() * 0.42, 0.775 + rnd() * 0.07, -0.28 + rnd() * 0.62]);
+  const dist = (a: number[], b: number[]) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+  const edges: number[][] = [];
+  nodes.forEach((a, i) => nodes.map((b, j) => [j, dist(a, b)]).filter(([j]) => j !== i).sort((x, y) => x[1] - y[1]).slice(0, 3)
+    .forEach(([j]) => { if (!edges.some(([p, q]) => (p === i && q === j) || (p === j && q === i))) edges.push([i, j as number]); }));
+  const cells: { e: number; t: number }[] = [], gm = new THREE.Object3D();
+  edges.forEach(([i, j], e) => { const n = Math.ceil(dist(nodes[i], nodes[j]) / 0.016); for (let k = 1; k < n; k++) cells.push({ e, t: k / n }); });
+  const graph = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial(), nodes.length + cells.length);
+  nodes.forEach((p, i) => { gm.position.set(p[0], p[1], p[2]); gm.scale.setScalar(0.022); gm.updateMatrix(); graph.setMatrixAt(i, gm.matrix); });
+  cells.forEach(({ e, t }, k) => {
+    const [i, j] = edges[e], a = nodes[i], b = nodes[j];
+    gm.position.set(a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t); gm.scale.setScalar(0.007); gm.updateMatrix();
+    graph.setMatrixAt(nodes.length + k, gm.matrix);
+  });
+  graph.visible = false; graph.frustumCulled = false; root.add(graph);
+  // Dijkstra on the 12 nodes; returns the path as a list of [edge, forward?] in order.
+  const route = (s0: number, t0: number) => {
+    const d = nodes.map(() => Infinity), prev: number[] = nodes.map(() => -1), seen = new Set<number>(); d[s0] = 0;
+    while (seen.size < nodes.length) {
+      let u = -1; d.forEach((x, i) => { if (!seen.has(i) && (u < 0 || x < d[u])) u = i; });
+      if (d[u] === Infinity) break; seen.add(u);
+      edges.forEach(([i, j]) => { const v = i === u ? j : j === u ? i : -1; if (v >= 0 && d[u] + dist(nodes[u], nodes[v]) < d[v]) { d[v] = d[u] + dist(nodes[u], nodes[v]); prev[v] = u; } });
+    }
+    const path: [number, boolean][] = [];
+    for (let v = t0; prev[v] >= 0; v = prev[v]) { const u = prev[v]; path.unshift([edges.findIndex(([i, j]) => (i === u && j === v) || (i === v && j === u)), edges[edges.findIndex(([i, j]) => (i === u && j === v) || (i === v && j === u))][0] === u]); }
+    return path;
+  };
+  w.hydra = { graph, nodes, cells, edges, route, path: route(0, 7), ends: [0, 7], routeAt: 0, c: new THREE.Color() };
+
   // lights: ambient, the screen's glow, a warm lamp for chai, moonlight through the window
   const amb = new THREE.AmbientLight('#4a5566', 1.3);
   const glow = new THREE.PointLight('#5cf29a', 1.6, 3, 2); glow.position.set(0, SCREEN_Y - 0.1, 0.75);
   const lamp = new THREE.PointLight('#ffb06a', 0, 4, 2); lamp.position.set(0.7, 1.45, 0.25);
   const moonLight = new THREE.DirectionalLight('#8fa6ff', 0.35); moonLight.position.set(1, 1.6, -1);
-  root.add(amb, glow, lamp, moonLight);
-  w.lights = { amb, glow, lamp, moonLight };
+  const key = new THREE.DirectionalLight('#fff4e0', 0); key.position.set(0.6, 2.2, 1.6); // fades in with the dream so the campus shows its colours
+  root.add(amb, glow, lamp, moonLight, key);
+  w.lights = { amb, glow, lamp, moonLight, key };
 
   // post pass: one full-screen triangle
   const rt = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: matchMedia('(pointer: coarse)').matches ? 0 : 4 });
@@ -234,7 +297,16 @@ function World({ lib }: { lib: any }) {
     nextTask()
       .then(() => alive && gl.compileAsync(w.root, camera, s3))
       .catch(() => {})
-      .then(() => { if (alive) { s3.add(w.root); st.current.ready = true; } });
+      .then(() => { if (alive) { s3.add(w.root); st.current.ready = true; } })
+      // then build and compile the two campuses, each in its own task, so `ssh` never stalls a frame
+      .then(async () => {
+        for (const id of ['iiest', 'iisc'] as const) {
+          await nextTask(); if (!alive) return;
+          const cp = w.buildCampus(id); cp.g.visible = true;
+          await gl.compileAsync(cp.g, camera, s3).catch(() => {});
+          cp.g.visible = cp.p > 0;
+        }
+      });
     const move = (e: PointerEvent) => { st.current.px = e.clientX / innerWidth - 0.5; st.current.py = e.clientY / innerHeight - 0.5; };
     addEventListener('pointermove', move, { passive: true });
     return () => { alive = false; s3.remove(w.root); removeEventListener('pointermove', move); live(false); term.texture(false); };
@@ -273,6 +345,42 @@ function World({ lib }: { lib: any }) {
     w.lights.lamp.intensity += ((scene.warm && !sleep ? 1.4 : 0) - w.lights.lamp.intensity) * k;
     w.moonMat.color.setScalar(0.85 + 0.15 * sleep);
     w.lights.moonLight.intensity = 0.35 + 0.5 * sleep;
+
+    // the dream: after the map hop the campus assembles out of the screen; any other command sends it back
+    let dream = 0;
+    for (const id of ['iiest', 'iisc'] as const) {
+      const cp = w.campuses[id], want = scene.campus === id && now - scene.hopAt > 1900 ? 1 : 0;
+      if (!cp) continue;
+      cp.p = Math.max(0, Math.min(1, cp.p + ((want ? 1 : -1) * dt) / 1.3));
+      cp.g.visible = cp.p > 0;
+      cp.u.uP.value = cp.p; cp.u.uTime.value = t; cp.u.uWob.value = Math.max(0, 1 - (now - scene.dragAt) / 700);
+      if (want && w.tlFor !== id) { w.drawTimeline(id); w.tlFor = id; }
+      dream = Math.max(dream, cp.p);
+    }
+    w.screenMat.uniforms.uDream.value = dream;
+    w.lights.key.intensity = 2.2 * dream; w.lights.glow.intensity *= 1 - 0.75 * dream;
+    w.tlMesh.visible = dream > 0; w.tlMat.opacity = dream;
+
+    // HYDRA graph: a click picks two new endpoints; the shortest path pulses from one end to the other
+    const H = w.hydra;
+    H.graph.visible = scene.graph;
+    if (scene.graph) {
+      if (scene.routeAt !== H.routeAt) {
+        H.routeAt = scene.routeAt;
+        const a = Math.floor(Math.random() * 12); let b = a; while (b === a) b = Math.floor(Math.random() * 12);
+        H.ends = [a, b]; H.path = H.route(a, b);
+      }
+      const on = new Map(H.path.map(([e, fwd]: [number, boolean], i: number) => [e, [i, fwd]]));
+      const wave = (t * 0.6) % 1.3;
+      H.nodes.forEach((_: any, i: number) => H.graph.setColorAt(i, H.c.set(H.ends.includes(i) ? '#d2ffe6' : '#3f9c6c')));
+      H.cells.forEach(({ e, t: f }: any, k: number) => {
+        const hit: any = on.get(e);
+        if (!hit) { H.graph.setColorAt(H.nodes.length + k, H.c.setRGB(0.05, 0.16, 0.1)); return; }
+        const sPos = (hit[0] + (hit[1] ? f : 1 - f)) / H.path.length, g = Math.max(0, 1 - Math.abs(sPos - wave) * 6);
+        H.graph.setColorAt(H.nodes.length + k, H.c.setRGB(0.15 + 0.7 * g, 0.55 + 0.45 * g, 0.3 + 0.55 * g));
+      });
+      H.graph.instanceColor.needsUpdate = true;
+    }
 
     // post pass
     gl.getDrawingBufferSize(c.buf);

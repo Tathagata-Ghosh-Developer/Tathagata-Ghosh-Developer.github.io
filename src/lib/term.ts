@@ -4,6 +4,7 @@
 // with a glowing readout. `top` gauges follow ThreeUI "Diagnostics Panel" (segmented bars, value + label).
 import s from '../data/site.json';
 import { scene, set } from './store';
+import { hop, sprite, timeline } from './voxel';
 
 const html = document.documentElement;
 const plain = () => html.hasAttribute('data-plain');
@@ -133,9 +134,7 @@ const proj = (q = '') => { q = q.toLowerCase().replace(/^projects\//, '').replac
 const files = ['projects/', 'thesis.md', 'skills.txt', 'ranks.txt', 'offduty/'];
 const offFiles = ['Makefile', 'bicycle/', 'pillow', 'adda.log'];
 
-export const setOverlay = (o: typeof overlay) => { overlay = o; kick(); };
-// Hooks the voxel/off-duty steps fill in (map hop and campus sprite on the 2D screen).
-export const hooks = { ssh: (_c: 'iiest' | 'iisc', _from: string, _t0: number) => {} };
+const room = () => $('hero-visual').hasAttribute('data-live'); // the 3D room is on screen
 
 const linkBox = $('term-links');
 function links(list: [string, string][]) {
@@ -185,10 +184,22 @@ function ssh(to: string) {
   say(`connecting to ${to} (${c.city}) ...`, 1);
   c.lines.forEach((l: string, i: number) => say(i ? l : `${c.name} · ${l}`, i ? 0 : 2, '  '));
   say('(the screen is dreaming; any command wakes it)', 1);
+  // Keep the rows above the prompt free: the map hop draws there, then (without the 3D room) the
+  // pixel-art campus and the timeline. In the room, the voxel campus rises out of the screen instead.
+  const R = Math.max(8, rows - 9), id = to as 'iiest' | 'iisc';
+  for (let i = 0; i < R; i++) say('');
   host = to;
   const t0 = born();
-  set({ campus: to as 'iiest' | 'iisc', view: 'campus', hopAt: t0 });
-  hooks.ssh(to as 'iiest' | 'iisc', from, t0);
+  set({ campus: id, view: 'campus', hopAt: t0 });
+  overlay = (g, now) => {
+    const k = (now - t0) / 2000, y = g.oy + (g.rows - 1 - R) * g.ch, h = R * g.ch, x = g.ox, w = g.cols * g.cw;
+    if (k < 1) { hop(g.c, from, to, k, x, y, w, h, g.th); return true; }
+    if (room()) return false;
+    const f = Math.max(10, Math.round(g.ch * 0.5));
+    sprite(g.c, id, x, y, w, h - f * 6);
+    timeline(g.c, id, x + f, y + h - f * 3, w - f * 4, f, g.th);
+    return false;
+  };
 }
 
 function adda(next = false) {
@@ -353,8 +364,12 @@ document.querySelectorAll<HTMLButtonElement>('[data-cmd]').forEach((b) => b.addE
 const stage = $('hero-visual');
 let px = 0, py = 0;
 stage.addEventListener('pointerdown', (e) => { px = e.clientX; py = e.clientY; touched(); });
+stage.addEventListener('pointermove', (e) => { if (e.buttons) set({ dragAt: performance.now() }); }, { passive: true });
 stage.addEventListener('pointerup', (e) => {
-  if (Math.hypot(e.clientX - px, e.clientY - py) < 8 && !(e.target as Element).closest('a, button')) inp.focus({ preventScroll: true });
+  if (Math.hypot(e.clientX - px, e.clientY - py) < 8 && !(e.target as Element).closest('a, button')) {
+    if (scene.graph) set({ routeAt: performance.now() });
+    inp.focus({ preventScroll: true });
+  }
 });
 // Typing anywhere on the page (outside links and buttons) goes to the shell.
 addEventListener('keydown', (e) => {
