@@ -115,6 +115,7 @@ function build(THREE: any) {
   const o = new THREE.Object3D(), shell: number[][] = [];
   const slabs = [0, 1, 2].map((s) => {
     const m = new THREE.InstancedMesh(geo, mat, N * SLAB * N);
+    m.frustumCulled = false; // always on screen; skips a 576-instance bounding-sphere pass and per-frame culling
     let n = 0;
     for (let i = 0; i < N; i++) for (let j = 0; j < SLAB; j++) for (let k = 0; k < N; k++, n++) {
       o.position.set(i - (N - 1) / 2, j - (SLAB - 1) / 2, k - (N - 1) / 2);
