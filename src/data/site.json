@@ -1,0 +1,507 @@
+{
+  "name": "Tathagata Ghosh",
+  "location": "Bengaluru, India",
+  "links": {
+    "github": "https://github.com/Tathagata-Ghosh-Developer",
+    "linkedin": "https://www.linkedin.com/in/tathagata-ghosh-92a343145/"
+  },
+  "whoami": [
+    "Tathagata Ghosh",
+    "M.Tech CDS, IISc Bangalore (2025–27)",
+    "HPC · CUDA · MPI · multi-GPU tensor SVD",
+    "Google printed 'Mr. Nasamajh' on my Hash Code certificate. It means clueless. I kept it."
+  ],
+  "gauges": [
+    {
+      "n": "90x",
+      "label": "HYDRA all-pairs shortest paths",
+      "card": "hydra",
+      "cond": "vs Sao et al.'s 2.5D on ego-Facebook: 217.93 s vs 2.42 s, same cluster"
+    },
+    {
+      "n": "0.888",
+      "label": "scaling efficiency, 16 GPUs",
+      "card": "thesis",
+      "cond": "thesis: 1024³ tensor, FP32, 14.20x on 16 V100 GPUs, two nodes"
+    },
+    {
+      "n": "3.17x",
+      "label": "GPU vs 72 CPU threads",
+      "card": "lcs-gpu",
+      "cond": "LCS of two 10⁸-char strings: CUDA 0.649 s vs OpenMP 2.029 s"
+    },
+    {
+      "n": "8.7e-15",
+      "label": "energy identity error, FP64",
+      "card": "thesis",
+      "cond": "thesis: Theorem 4 / Corollary 6 in FP64 (2.3e-5 in FP32)"
+    }
+  ],
+  "projects": [
+    {
+      "id": "hydra",
+      "name": "HYDRA",
+      "size": "90x",
+      "line": "All-pairs shortest paths on MPI + OpenMP + CUDA.",
+      "bullets": [
+        "Density-aware dispatch sends each 32x32 tile to GPU or CPU.",
+        "Beat 8 reimplemented published methods, up to 90x.",
+        "Bit-exact against the sequential reference; losses reported."
+      ],
+      "chips": [
+        "MPI",
+        "OpenMP",
+        "CUDA"
+      ],
+      "when": "DS295 Parallel Programming, grade A+",
+      "cond": "vs Sao et al.'s 2.5D on ego-Facebook: 217.93 s vs 2.42 s, same cluster.",
+      "proof": "https://github.com/Tathagata-Ghosh-Developer",
+      "proofLabel": "GitHub profile"
+    },
+    {
+      "id": "lcs-gpu",
+      "name": "LCS on GPU",
+      "size": "3.17x",
+      "line": "Longest common substring of two 10⁸-character strings.",
+      "bullets": [
+        "No O(NM) table: suffix arrays by prefix doubling on the GPU.",
+        "CUDA 0.649 s vs best 72-thread OpenMP 2.029 s.",
+        "30 trials plus 5 warm-ups; 0.0029 s standard deviation."
+      ],
+      "chips": [
+        "CUDA",
+        "Thrust",
+        "AVX2"
+      ],
+      "when": "DS295 assignment",
+      "cond": "CUDA prefix doubling 0.649 s vs the best OpenMP configuration 2.029 s (k-mer index + AVX2).",
+      "proof": "https://github.com/Tathagata-Ghosh-Developer",
+      "proofLabel": "GitHub profile"
+    },
+    {
+      "id": "tensor-hadamard",
+      "name": "Face-wise tensor product",
+      "size": "18.66x",
+      "line": "Four backends for the product behind t-SVD.",
+      "bullets": [
+        "Serial, OpenMP, CUDA and hybrid CPU+GPU backends.",
+        "Up to 18.66x over serial; 3.71x CUDA on dense 4000x4000x12.",
+        "Validated across a 700-run scalability matrix."
+      ],
+      "chips": [
+        "C++17 templates",
+        "OpenMP",
+        "cuBLAS"
+      ],
+      "when": "DS285 Tensor Computations, grade A",
+      "cond": "Hybrid backend, 5000x5000x100 tensor, 64 threads, on a 36-core node with an RTX A5000.",
+      "proof": "https://github.com/Tathagata-Ghosh-Developer",
+      "proofLabel": "GitHub profile"
+    },
+    {
+      "id": "kmeans-spmv",
+      "name": "K-means + SpMV",
+      "size": "21.90x",
+      "line": "OpenMP K-means and MPI SpMV on a 760.6 M-nonzero matrix.",
+      "bullets": [
+        "K-means: 7.19x on 32 threads, identical centroids.",
+        "Showed dynamic scheduling can lose to serial (0.39x).",
+        "SpMV: 21.90x on 128 processes across six nodes."
+      ],
+      "chips": [
+        "OpenMP",
+        "MPI",
+        "SLURM"
+      ],
+      "when": "DS295 assignment",
+      "cond": "Strong scaling of MPI SpMV on the NLPKKT240 matrix, 128 processes across six nodes.",
+      "proof": "https://github.com/Tathagata-Ghosh-Developer",
+      "proofLabel": "GitHub profile"
+    },
+    {
+      "id": "dftfe-clap",
+      "name": "DFT-FE on CLAP",
+      "size": "-",
+      "line": "Routed DFT-FE's 8 GEMM overloads through CLAP's 4.",
+      "bullets": [
+        "Configure-time switch; bit-identical to upstream when off.",
+        "CLAP headers isolated behind one shim header.",
+        "Verification and timing layer on real call shapes."
+      ],
+      "chips": [
+        "C++",
+        "CMake",
+        "cuBLAS"
+      ],
+      "when": "MATRIX Lab side project",
+      "proof": "https://github.com/Tathagata-Ghosh-Developer",
+      "proofLabel": "GitHub profile"
+    },
+    {
+      "id": "air-b-n-c",
+      "name": "Air-B-N-C",
+      "size": "-",
+      "line": "Write characters in thin air; edge devices read them.",
+      "bullets": [
+        "IMU, camera and depth branches each infer on the edge.",
+        "A central node fuses them over 62 character classes.",
+        "Team of 3; I built the IMU firmware and vision classifier."
+      ],
+      "chips": [
+        "Arduino",
+        "PyTorch",
+        "TinyML"
+      ],
+      "when": "CP330 Edge AI, team of 3",
+      "proof": "https://github.com/Tathagata-Ghosh-Developer/Air-B-N-C-Writing-ABCs-in-Thin-Air",
+      "proofLabel": "source code"
+    },
+    {
+      "id": "nlp-lm-rl",
+      "name": "SFT, DPO, GRPO",
+      "size": "-",
+      "line": "Fine-tuned a small language model on math word problems.",
+      "bullets": [
+        "SFT trainer from scratch: masking, shifted cross-entropy.",
+        "DPO on preference pairs; GRPO with group rewards.",
+        "Scored by pass@1 and pass@k (k = 5)."
+      ],
+      "chips": [
+        "PyTorch",
+        "transformers"
+      ],
+      "when": "DS207 course project",
+      "proof": "https://github.com/Tathagata-Ghosh-Developer",
+      "proofLabel": "GitHub profile"
+    },
+    {
+      "id": "edgeai-imu",
+      "name": "Wrist IMU HAR",
+      "size": "-",
+      "line": "Activity recognition from a wrist IMU on a Nicla Vision.",
+      "bullets": [
+        "MicroPython firmware at a drift-corrected 60 Hz.",
+        "12 activities, 26,819 windows, 126 features.",
+        "Chose a 94.48% tree over a 97.35% forest: 134.9 KB."
+      ],
+      "chips": [
+        "MicroPython",
+        "scikit-learn",
+        "Optuna"
+      ],
+      "when": "CP330 Edge AI",
+      "proof": "https://github.com/Tathagata-Ghosh-Developer",
+      "proofLabel": "GitHub profile"
+    },
+    {
+      "id": "mlds-segmentation",
+      "name": "VOC vision",
+      "size": "-",
+      "line": "Multi-label classification and segmentation, VOC-style.",
+      "bullets": [
+        "PCA from scratch: 170 of 3072 components keep 95%.",
+        "ResNet50 with an FPN-style head: val F1@0.5 = 0.812.",
+        "ConvNeXt + DeepLabV3+ for 21 classes, Wilcoxon-tested."
+      ],
+      "chips": [
+        "PyTorch",
+        "timm"
+      ],
+      "when": "Course project",
+      "proof": "https://github.com/Tathagata-Ghosh-Developer",
+      "proofLabel": "GitHub profile"
+    },
+    {
+      "id": "video2pdf",
+      "name": "Video2PDF",
+      "size": "-",
+      "line": "Lecture videos to deduplicated slide PDFs.",
+      "bullets": [
+        "Slide changes by pixel-difference ratio, 5-frame stability.",
+        "Near-duplicates dropped by MSE similarity.",
+        "Local files or YouTube URLs."
+      ],
+      "chips": [
+        "Python",
+        "OpenCV"
+      ],
+      "when": "Side project",
+      "proof": "https://github.com/Tathagata-Ghosh-Developer",
+      "proofLabel": "GitHub profile"
+    },
+    {
+      "id": "isdc-website",
+      "name": "ISDC 2026 site",
+      "size": "-",
+      "line": "TypeScript site for IISc's Durga Puja (ISDC 2026).",
+      "bullets": [
+        "Built while on the committee, finances included.",
+        "Also built the CDS farewell 2026 site."
+      ],
+      "chips": [
+        "TypeScript",
+        "HTML/CSS"
+      ],
+      "when": "Community",
+      "proof": "https://github.com/Tathagata-Ghosh-Developer",
+      "proofLabel": "GitHub profile"
+    },
+    {
+      "id": "hardware-trojan-gnn",
+      "name": "Trojan GNN",
+      "size": "-",
+      "line": "Golden-reference-free hardware Trojan detection with GNNs.",
+      "bullets": [
+        "GNNs on data-flow graphs of RTL and gate-level netlists.",
+        "Clean and Trojan-inserted 16-bit ALU in Verilog.",
+        "Self-reported: 97% recall at RTL, 84% at gate level."
+      ],
+      "chips": [
+        "GNNs",
+        "Verilog",
+        "TrustHub"
+      ],
+      "when": "B.Tech",
+      "proof": "https://github.com/Tathagata-Ghosh-Developer",
+      "proofLabel": "GitHub profile"
+    },
+    {
+      "id": "logic-locking-alu",
+      "name": "Logic locking",
+      "size": "-",
+      "line": "Logic locking a 16-bit ALU against Trojan insertion.",
+      "bullets": [
+        "Cadence Genus/Tempus scripts flag likely insertion sites.",
+        "XOR/XNOR key gates harden them against SAT attacks.",
+        "B.Tech final-year project, graded A+."
+      ],
+      "chips": [
+        "Verilog",
+        "Cadence",
+        "Python"
+      ],
+      "when": "B.Tech final-year project",
+      "proof": "https://github.com/Tathagata-Ghosh-Developer",
+      "proofLabel": "GitHub profile"
+    },
+    {
+      "id": "facial-keypoint-login",
+      "name": "Face login",
+      "size": "-",
+      "line": "Log in with facial key-points instead of a password.",
+      "bullets": [
+        "Live detection for higher security.",
+        "Python/OpenCV back end, React + Bootstrap front end."
+      ],
+      "chips": [
+        "OpenCV",
+        "React"
+      ],
+      "when": "B.Tech",
+      "proof": "https://github.com/Tathagata-Ghosh-Developer",
+      "proofLabel": "GitHub profile"
+    },
+    {
+      "id": "iic-innovation-archive",
+      "name": "IISc innovation archive",
+      "size": "-",
+      "line": "A queryable archive of IISc's innovation history.",
+      "bullets": [
+        "Five pillars, from startups to eminent faculty.",
+        "NotebookLM-grounded workflow into one master database.",
+        "Owned three divisions; interviewed a retired professor."
+      ],
+      "chips": [
+        "Web scraping",
+        "NotebookLM"
+      ],
+      "when": "Institute Innovation Council",
+      "proof": "https://github.com/Tathagata-Ghosh-Developer",
+      "proofLabel": "GitHub profile"
+    }
+  ],
+  "thesis": {
+    "title": "tSVDm: exact star-M tensor SVD on 16 V100 GPUs",
+    "lab": "MATRIX Lab, IISc (ACM Gordon Bell Prize-winning lab)",
+    "with": "Advisor: Prof. Phani Motamarri · with Argonne National Laboratory",
+    "when": "Mar 2026–present",
+    "lines": [
+      "tSVDm: exact star-M tensor SVD on 16 V100 GPUs",
+      "MATRIX Lab, IISc · Prof. Phani Motamarri · Mar 2026–present",
+      "C++17/CUDA, MPI + an NCCL ring over NVLink, FP32 and FP64",
+      "14.20x on 16 GPUs (efficiency 0.888), 1024³ tensor, FP32",
+      "energy identity to 8.7e-15 (FP64); 4096³ FP64 ran in 2719 s"
+    ]
+  },
+  "campuses": {
+    "iiest": {
+      "name": "IIEST Shibpur",
+      "city": "Kolkata",
+      "from": 2020,
+      "to": 2024,
+      "lines": [
+        "B.Tech IT, 2020–2024",
+        "CGPA 9.0, First Class",
+        "School: ISC 97.75%, ICSE 96.4%"
+      ]
+    },
+    "iisc": {
+      "name": "IISc Bangalore",
+      "city": "Bengaluru",
+      "from": 2025,
+      "to": 2027,
+      "lines": [
+        "M.Tech CDS, 2025–2027",
+        "CGPA 8.6 · MATRIX Lab",
+        "Thesis: tSVDm, Mar 2026–present"
+      ]
+    }
+  },
+  "ticks": [
+    {
+      "at": "2024-07",
+      "label": "RMES 2024–25"
+    },
+    {
+      "at": "2026-05",
+      "label": "IBM 2026"
+    }
+  ],
+  "history": [
+    [
+      "2020-08",
+      "B.Tech IT begins, IIEST Shibpur"
+    ],
+    [
+      "2023-05",
+      "Summer research intern, IIEST Shibpur"
+    ],
+    [
+      "2024-05",
+      "B.Tech done, CGPA 9.0"
+    ],
+    [
+      "2024-07",
+      "Software Engineer-1, RMES India"
+    ],
+    [
+      "2025-08",
+      "M.Tech CDS begins, IISc Bangalore"
+    ],
+    [
+      "2026-03",
+      "Thesis: tSVDm, MATRIX Lab"
+    ],
+    [
+      "2026-05",
+      "Data Science Intern, IBM India"
+    ],
+    [
+      "2027-06",
+      "M.Tech ends"
+    ]
+  ],
+  "experience": [
+    {
+      "id": "rmes",
+      "when": "2024–25",
+      "title": "Software Engineer-1",
+      "org": "RMES India (Rugged Monitoring)",
+      "lines": [
+        "C#/.NET real-time monitoring software",
+        "for high-voltage electrical assets"
+      ]
+    },
+    {
+      "id": "ibm",
+      "when": "2026",
+      "title": "Data Science Intern",
+      "org": "IBM India",
+      "lines": [
+        "Win-likelihood models for four products",
+        "up to 5.7x win-rate lift over baseline"
+      ]
+    }
+  ],
+  "ranks": [
+    {
+      "n": "AIR 663",
+      "label": "GATE DA 2025"
+    },
+    {
+      "n": "1,668,149 pts",
+      "label": "Hash Code 2022, qualification"
+    },
+    {
+      "n": "rank 13,429",
+      "label": "Kick Start 2021, Round A"
+    }
+  ],
+  "skills": [
+    {
+      "id": "hpc",
+      "label": "HPC",
+      "items": [
+        "CUDA",
+        "MPI",
+        "NCCL",
+        "OpenMP",
+        "Nsight / TAU",
+        "Roofline"
+      ]
+    },
+    {
+      "id": "aiml",
+      "label": "AI / ML",
+      "items": [
+        "PyTorch",
+        "XGBoost + SHAP",
+        "GNNs",
+        "SFT / DPO / GRPO",
+        "Optuna",
+        "TinyML"
+      ]
+    },
+    {
+      "id": "sys",
+      "label": "Systems",
+      "items": [
+        "C++17",
+        "C# / .NET / WPF",
+        "Python",
+        "TypeScript",
+        "Verilog",
+        "Linux / Bash"
+      ]
+    }
+  ],
+  "facts": [
+    "Hash Code certificate said 'Mr. Nasamajh' (clueless). I kept it.",
+    "I keep the ledger for the campus cat welfare fund.",
+    "Mess President for 800+ residents. Lunch is harder than consensus.",
+    "Asked for 5 timing runs. I ran 30, plus 5 warm-ups.",
+    "Found two errors in the published pseudocode I was implementing.",
+    "Built the Durga Puja website, then argued with its invoices.",
+    "Proved OpenMP dynamic scheduling can lose to serial: 0.39x.",
+    "Reimplemented eight rival APSP methods. Reported the two I lost to."
+  ],
+  "hobbies": [
+    {
+      "id": "cycling",
+      "label": "Cycling"
+    },
+    {
+      "id": "chai",
+      "label": "Chai"
+    },
+    {
+      "id": "sleep",
+      "label": "Sleeping"
+    },
+    {
+      "id": "adda",
+      "label": "Adda",
+      "note": "long, unhurried conversation with friends (Bengali)"
+    }
+  ]
+}

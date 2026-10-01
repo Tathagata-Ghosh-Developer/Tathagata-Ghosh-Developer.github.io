@@ -1,320 +1,86 @@
 ---
 import Base from '../layouts/Base.astro';
-import HeroScene from '../components/HeroScene.tsx';
-import p from '../data/profile.json';
+import s from '../data/site.json';
 
-// All facts come from profile.json. Copy written here only rephrases them.
-const sc = p.site_copy;
-const { github, linkedin } = p.links;
-const find = (list, id) => list.find((x) => x.id === id);
-const month = (s) => new Date(s + '-01T00:00:00Z').toLocaleString('en-GB', { month: 'short', year: 'numeric', timeZone: 'UTC' });
-const span = (a, b) => `${month(a)} – ${b ? month(b) : 'present'}`;
-const arrow = (s) => s.replace(/ ?-> ?/g, ' → ');
-
-// Hero poster: an isometric N x N x N tensor of inset squares, 16 of them lit (the 16 GPUs).
-const N = 6, S = 26, W = N * S * 0.866;
-const pt = ([x, y, z]) => `${((x - y) * S * 0.866).toFixed(1)},${((x + y) * S * 0.5 - z * S).toFixed(1)}`;
-const cells = [];
-for (let a = 0; a < N; a++) for (let b = 0; b < N; b++) {
-  cells.push(['t', [[a, b, N], [a + 1, b, N], [a + 1, b + 1, N], [a, b + 1, N]]]);
-  cells.push(['r', [[N, a, b], [N, a + 1, b], [N, a + 1, b + 1], [N, a, b + 1]]]);
-  cells.push(['l', [[a, N, b], [a + 1, N, b], [a + 1, N, b + 1], [a, N, b + 1]]]);
-}
-let seed = 11;
-const lit = new Set();
-while (lit.size < 16) lit.add((seed = (seed * 16807) % 2147483647) % cells.length);
-const quads = cells.map(([face, q], i) => {
-  const c = [0, 1, 2].map((k) => q.reduce((s, v) => s + v[k], 0) / 4);
-  return { cls: lit.has(i) ? `${face} lit` : face, points: q.map((v) => pt(v.map((x, k) => c[k] + (x - c[k]) * 0.84))).join(' ') };
-});
-const edge = `M${pt([0, 0, N])}L${pt([N, 0, N])}L${pt([N, 0, 0])}L${pt([N, N, 0])}L${pt([0, N, 0])}L${pt([0, N, N])}Z` +
-  `M${pt([N, N, N])}L${pt([N, 0, N])}M${pt([N, N, N])}L${pt([0, N, N])}M${pt([N, N, N])}L${pt([N, N, 0])}`;
-const viewBox = `${(-W - 8).toFixed(1)} ${-N * S - 8} ${(2 * W + 16).toFixed(1)} ${2 * N * S + 16}`;
-
-const numbers = [
-  { n: '90x', what: 'HYDRA all-pairs shortest paths', cond: "Up to 90x over Sao et al.'s 2.5D algorithm on ego-Facebook (217.93 s vs 2.42 s), both run on the same cluster.", href: '#hydra', go: 'HYDRA' },
-  { n: '0.888', what: 'Strong-scaling efficiency on 16 GPUs', cond: 'Thesis, 1024³ tensor, FP32: 14.20x on 16 V100 GPUs across two nodes.', href: '#research', go: 'Research', id: 'scaling-number' },
-  { n: '3.17x', what: 'GPU longest common substring', cond: 'CUDA vs the best 72-thread OpenMP configuration on two 10⁸-character strings (0.649 s vs 2.029 s).', href: '#lcs-gpu', go: 'LCS project' },
-  { n: '8.7e-15', what: 'Energy identity, FP64', cond: 'Thesis: Theorem 4 / Corollary 6 holds to 8.7e-15 in FP64 (2.3e-5 in FP32).', href: '#research', go: 'Research' },
-];
-
-const thesis = p.research[0];
-const thesisBullets = [
-  sc.research.highlights[1],
-  sc.research.highlights[2],
-  '<b>Scales.</b> Strong scaling on a 1024³ tensor: 7.89x on 8 GPUs (efficiency 0.986) and 14.20x on 16 GPUs (0.888) in FP32, 15.77x on 16 GPUs in FP64.',
-  sc.research.highlights[4],
-];
-
-const flagship = [
-  ['hydra', [2, 3, 4]],
-  ['tensor-hadamard', [2, 1]],
-  ['lcs-gpu', [2, 3]],
-  ['dftfe-clap', [0, 1]],
-  ['air-b-n-c', [0, 2]],
-  ['nlp-lm-rl', [0, 1]],
-].map(([id, picks]) => ({ ...find(p.projects, id), picks, aside: sc.projects[id]?.aside }));
-
-const also = ['kmeans-spmv', 'edgeai-imu', 'mlds-segmentation', 'video2pdf', 'isdc-website', 'hardware-trojan-gnn', 'logic-locking-alu', 'facial-keypoint-login', 'iic-innovation-archive']
-  .map((id) => { const x = find(p.projects, id), c = sc.projects[id] ?? {}; return { name: x.name, text: c.more ?? c.result ?? x.subtitle }; });
-
-const experience = [['rmes', [1, 3, 4]], ['ibm-intern', [0]], ['iiest-research-intern', [2]]]
-  .map(([id, picks]) => ({ ...find(p.experience, id), picks }));
-
-const topGrades = p.education[0].coursework.filter((c) => c.grade === 'A+' || c.grade === 'A').map((c) => `${c.name} (${c.grade})`).join(', ');
-const ta = p.teaching[0];
-
-const facts = [
-  "Google printed 'Mr. Nasamajh Engineerwala' on my Hash Code certificate. Nasamajh means clueless. I kept it: it is still my GitHub display name.",
-  'I keep the ledger for the Aryabhatta Cat Welfare Fund, so the campus cats at IISc have a treasurer.',
-  'As Mess President I answer to 800+ residents about lunch, which is a harder distributed-consensus problem than anything in my thesis.',
-  "I built the website for IISc's Durga Puja festival (ISDC 2026) in TypeScript and also handle the committee's finances: possibly the only member who has argued with both a compiler and an invoice in the same week.",
-  'When an assignment asked for 5 timing runs, I ran 30 (plus 5 warm-ups) and cited the Central Limit Theorem in the report. Twice.',
-  'My first full thesis benchmark measured a truncation that truncated nothing: the threshold compared local against global energy and never fired on more than one GPU. A distributed bisection fixed it, and the threshold is now bit-identical on 1, 2, 4 and 8 GPUs.',
-];
+// Every fact and number comes from site.json (built from the master profile outside this repo).
+// This file is the plain mode: the whole site as a compact transcript, always in the DOM for screen
+// readers and crawlers, and the page itself under reduced motion.
+const { github, linkedin } = s.links;
+const t = s.thesis;
 ---
-<Base title={sc.title} description={sc.description}>
-  <a class="skip" href="#projects">Skip to projects</a>
+<Base title="Tathagata Ghosh · HPC and GPU computing" description="Tathagata Ghosh, M.Tech CDS at IISc Bangalore. Multi-GPU tensor decompositions, MPI and CUDA, and the numbers behind them.">
+  <a class="skip" href="#plain">Plain mode</a>
 
-  <header class="wrap nav">
-    <a class="brand" href="/">{p.name}</a>
-    <nav aria-label="Main">
-      <ul>
-        <li><a href="#projects">Projects</a></li>
-        <li><a href="#research">Research</a></li>
-        <li><a href="#experience">Experience</a></li>
-        <li><a href="#off-duty">Off duty</a></li>
-        <li><a href={github}>GitHub</a></li>
-        <li><a href={linkedin}>LinkedIn</a></li>
-      </ul>
-    </nav>
-    <button class="toggle" id="motion-toggle" type="button" aria-pressed="false">Reduce motion</button>
-  </header>
+  <main class="plain" id="plain">
+    <div class="wrap">
+      <header>
+        <h1>{s.name}</h1>
+        <p class="kick">I make tensors smaller and clusters busier.</p>
+        <p class="links"><a class="btn primary" href={github}>GitHub</a><a class="btn" href={linkedin}>LinkedIn</a></p>
+      </header>
 
-  <main id="main">
-    <div class="wrap hero">
-      <div class="hero-copy">
-        <p class="kicker">{sc.hero.kicker}</p>
-        <h1>{p.name}</h1>
-        <p class="headline">{sc.hero.headline}</p>
-        {sc.hero.lines.map((l) => <p class="lead" set:html={l} />)}
-        <div class="actions">
-          <a class="btn primary" href="#projects">See projects</a>
-          <a class="btn" href={github}>GitHub</a>
-          <a class="btn" href={linkedin}>LinkedIn</a>
-        </div>
-      </div>
-      <div class="hero-visual" id="hero-visual">
-        <svg class="poster" viewBox={viewBox} role="img" aria-label="A cube-shaped tensor drawn as small squares, sixteen of them lit green like busy GPUs">
-          <path class="edge" d={edge} />
-          {quads.map((q) => <polygon class={q.cls} points={q.points} />)}
-        </svg>
-        <HeroScene client:visible />
-      </div>
-    </div>
+      <section aria-labelledby="h-who">
+        <h2 id="h-who">whoami</h2>
+        <ul>{s.whoami.map((l) => <li>{l}</li>)}</ul>
+      </section>
 
-    <section class="numbers" aria-labelledby="numbers-h">
-      <div class="wrap">
-        <h2 class="label" id="numbers-h">The numbers, with their conditions</h2>
-        <div class="tiles">
-          {numbers.map((t) => (
-            <a class="tile" href={t.href}>
-              <span class="n mono" id={t.id}>{t.n}</span>
-              <span class="what">{t.what}</span>
-              <span class="cond">{t.cond}</span>
-              <span class="go">Proof: {t.go} ↓</span>
-            </a>
-          ))}
-        </div>
-      </div>
-    </section>
-
-    <section id="research" aria-labelledby="research-h">
-      <div class="wrap">
-        <h2 id="research-h">Research</h2>
-        <p class="intro">{sc.research.intro}</p>
-        <article class="card thesis">
-          <p class="label">{thesis.degree} · {span(thesis.start, thesis.end)}</p>
-          <h3>{thesis.title}</h3>
-          <p class="meta">{thesis.short_title}</p>
-          <p>MATRIX Lab, Department of Computational and Data Sciences, IISc Bangalore (an ACM Gordon Bell Prize-winning lab), in collaboration with Argonne National Laboratory. Supervisor: {thesis.supervisor}.</p>
-          <p set:html={sc.what.thesis} />
-          <ul>{thesisBullets.map((b) => <li set:html={b} />)}</ul>
-          <ul class="chips">{sc.research.stack.map((t) => <li>{t}</li>)}</ul>
-        </article>
-      </div>
-    </section>
-
-    <section id="projects" aria-labelledby="projects-h">
-      <div class="wrap">
-        <h2 id="projects-h">Projects</h2>
-        <p class="intro">{sc.projects_intro}</p>
-        <div class="grid">
-          {flagship.map((x) => (
-            <article class="card" id={x.id}>
-              <h3>{x.name}</h3>
-              <p class="meta">{x.context}{x.start && ` · ${span(x.start, x.end)}`}</p>
-              <p>{x.subtitle}</p>
-              <ul>{x.picks.map((i) => <li>{arrow(x.bullets[i].text)}</li>)}</ul>
-              {x.aside && <p class="aside">{x.aside}</p>}
-              <ul class="chips">{x.tech.map((t) => <li>{t}</li>)}</ul>
-              <a class="proof" href={x.repo ?? github}>{x.repo ? 'Proof: source code' : 'Proof: GitHub profile'}<span class="sr"> ({x.name})</span> →</a>
-            </article>
-          ))}
-        </div>
-        <h3 class="sub">Also built</h3>
-        <ul class="also">
-          {also.map((x) => <li><b>{x.name}.</b> <span set:html={x.text} /></li>)}
+      <section aria-labelledby="h-top">
+        <h2 id="h-top">top</h2>
+        <ul class="grid">
+          {s.gauges.map((g) => <li><p><span class="n">{g.n}</span> {g.label}</p><small>{g.cond}</small></li>)}
         </ul>
-      </div>
-    </section>
+      </section>
 
-    <section id="experience" aria-labelledby="experience-h">
-      <div class="wrap">
-        <h2 id="experience-h">Experience</h2>
-        <p class="intro">{sc.experience_intro}</p>
-        <div class="grid">
-          {experience.map((x) => (
-            <article class="card">
-              <h3>{x.title}</h3>
-              <p class="meta">{x.org} · {x.location} · {span(x.start, x.end)}</p>
-              <p>{x.one_liner}</p>
-              <ul>{x.picks.map((i) => <li>{arrow(x.bullets[i].text)}</li>)}</ul>
-              <ul class="chips">{x.tech.map((t) => <li>{t}</li>)}</ul>
-            </article>
-          ))}
-        </div>
-      </div>
-    </section>
+      <section aria-labelledby="h-thesis">
+        <h2 id="h-thesis">cat thesis.md</h2>
+        <h3>{t.title}</h3>
+        <p class="muted">{t.lab} · {t.with} · {t.when}</p>
+        <ul>{t.lines.slice(2).map((l) => <li>{l}</li>)}</ul>
+      </section>
 
-    <section id="education" aria-labelledby="education-h">
-      <div class="wrap">
-        <h2 id="education-h">Education</h2>
-        <div class="grid">
-          {p.education.map((e, i) => (
-            <article class="card">
-              <h3>{e.degree}</h3>
-              <p class="meta">{e.institution} · {e.start ? `${e.start.slice(0, 4)} – ${e.end.slice(0, 4)}` : e.end.slice(0, 4)}</p>
-              <p><span class="mono" style="color:var(--accent)">{e.score_label === 'Percentage' ? e.score : `${e.score_label} ${e.score}`}</span></p>
-              {i === 0 && (
-                <>
-                  <p class="muted">Top grades: {topGrades}.</p>
-                  <p class="muted">{ta.role}, {ta.course}, {ta.term}. <em>{sc.teaching_aside}</em></p>
-                </>
-              )}
-            </article>
-          ))}
-        </div>
-      </div>
-    </section>
-
-    <section id="skills" aria-labelledby="skills-h">
-      <div class="wrap">
-        <h2 id="skills-h">Skills</h2>
-        <p class="intro">{sc.skills_intro}</p>
-        <div class="skills">
-          {sc.skills_order.map((k) => (
-            <div>
-              <h3>{sc.skills_labels[k]}</h3>
-              <ul class="chips">{p.skills[k].map((s) => <li>{s}</li>)}</ul>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-
-    <section id="off-duty" aria-labelledby="off-duty-h">
-      <div class="wrap">
-        <h2 id="off-duty-h">Off duty</h2>
-        <p class="intro">{sc.leadership_intro}</p>
-        <div class="grid">
-          {facts.map((f) => <div class="card fact"><p>{f}</p></div>)}
-        </div>
-      </div>
-    </section>
-
-    <section id="leadership" aria-labelledby="leadership-h">
-      <div class="wrap">
-        <h2 id="leadership-h">Leadership</h2>
-        <ul class="lead-list">
-          {p.leadership.map((l) => (
-            <li>
-              <b>{l.role}</b>
-              <span>{l.org}{l.start && ` · ${span(l.start, l.end)}`}. {l.text}</span>
+      <section aria-labelledby="h-proj">
+        <h2 id="h-proj">ls projects/</h2>
+        <ul class="grid">
+          {s.projects.map((p) => (
+            <li id={`p-${p.id}`}>
+              <h3>{p.name}{p.size !== '-' && <span class="n"> {p.size}</span>}</h3>
+              <p>{p.line}</p>
+              <ul>{p.bullets.map((b) => <li>{b}</li>)}</ul>
+              {p.cond && <small>{p.cond}</small>}
+              <ul class="chips">{p.chips.map((c) => <li>{c}</li>)}</ul>
+              <small>{p.when} · <a href={p.proof}>Proof: {p.proofLabel}<span class="sr"> ({p.name})</span></a></small>
             </li>
           ))}
         </ul>
-      </div>
-    </section>
-  </main>
+      </section>
 
-  <footer>
-    <div class="wrap">
-      <p class="links"><a href={github}>GitHub</a> <a href={linkedin}>LinkedIn</a></p>
-      <p>No email on this page by design; LinkedIn messages reach me.</p>
-      <p>Built with Astro and Three.js. Every number on this page is a measured one.</p>
+      <section aria-labelledby="h-hist">
+        <h2 id="h-hist">history</h2>
+        <ul class="rows">{s.history.map(([d, l]) => <li><span class="muted">{d}</span><span>{l}</span></li>)}</ul>
+        <ul class="grid" style="margin-top:1rem">
+          {Object.values(s.campuses).map((c) => <li><h3>{c.name}</h3>{c.lines.map((l) => <p>{l}</p>)}</li>)}
+          {s.experience.map((x) => <li><h3>{x.title}, {x.org} <span class="muted">{x.when}</span></h3>{x.lines.map((l) => <p>{l}</p>)}</li>)}
+        </ul>
+      </section>
+
+      <section aria-labelledby="h-skills">
+        <h2 id="h-skills">cat skills.txt ranks.txt</h2>
+        <ul>{s.skills.map((g) => <li><span class="n">{g.label}:</span> {g.items.join(', ')}</li>)}</ul>
+        <ul style="margin-top:0.6rem">{s.ranks.map((r) => <li><span class="n">{r.n}</span> {r.label}</li>)}</ul>
+      </section>
+
+      <section aria-labelledby="h-off">
+        <h2 id="h-off">cd ~/offduty</h2>
+        <p>{s.hobbies.map((h) => h.label + (h.note ? ` (${h.note})` : '')).join(' · ')}</p>
+        <ul style="margin-top:0.6rem">{s.facts.map((f) => <li>{f}</li>)}</ul>
+      </section>
+
+      <section aria-labelledby="h-exit">
+        <h2 id="h-exit">exit</h2>
+        <p class="links"><a class="btn primary" href={github}>GitHub</a><a class="btn" href={linkedin}>LinkedIn</a></p>
+        <p class="muted" style="margin-top:0.6rem">No email here by design; LinkedIn messages reach me.</p>
+      </section>
     </div>
-  </footer>
-
-  <script is:inline>
-    (() => {
-      const b = document.getElementById('motion-toggle'), h = document.documentElement;
-      const set = (on) => { if (on) h.dataset.motion = 'reduce'; else delete h.dataset.motion; b.setAttribute('aria-pressed', String(on)); };
-      set(h.dataset.motion === 'reduce');
-      b.addEventListener('click', () => {
-        const on = h.dataset.motion !== 'reduce';
-        set(on);
-        try { localStorage.setItem('motion', on ? 'reduce' : ''); } catch (e) {}
-      });
-    })();
-  </script>
-
-  <script>
-    // Section reveals and the 0.888 counter, with GSAP ScrollTrigger. Nothing loads under reduced motion
-    // (OS setting or the toggle), content that is already on screen is never hidden, and turning the
-    // toggle on later undoes every pending reveal. GSAP loads after the first paint and the load event,
-    // and each ScrollTrigger is created in its own task so no single task runs long.
-    const h = document.documentElement;
-    const reduced = () => h.dataset.motion === 'reduce' || matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const nextTask = () => new Promise((r) => setTimeout(r, 0));
-    const unhide = () => { for (const el of document.querySelectorAll('.rv')) el.classList.remove('rv'); };
-
-    async function reveal() {
-      await new Promise<void>((r) => {
-        setTimeout(r, 3000);
-        try { new PerformanceObserver((_, o) => { o.disconnect(); r(); }).observe({ type: 'paint', buffered: true }); } catch { r(); }
-      });
-      if (document.readyState !== 'complete') await new Promise((r) => addEventListener('load', r, { once: true }));
-      const [{ gsap }, { ScrollTrigger }] = await Promise.all([import('gsap'), import('gsap/ScrollTrigger')]);
-      if (reduced()) return;
-      gsap.registerPlugin(ScrollTrigger);
-      const n = document.getElementById('scaling-number');
-      const ctx = gsap.context(() => {});
-      new MutationObserver(() => {
-        if (!reduced()) return;
-        ctx.revert();
-        unhide();
-        if (n) n.textContent = '0.888';
-      }).observe(h, { attributes: true, attributeFilter: ['data-motion'] });
-
-      // One trigger per section, not per card. Hide with a class (style writes only, no per-element reads).
-      const groups = [...document.querySelectorAll('main section')].map((sec) =>
-        [...sec.querySelectorAll('h2, .intro, .tile, .card, .sub, .also li, .skills > div, .lead-list li')].filter((el) => el.getBoundingClientRect().top > innerHeight));
-      for (const el of groups.flat()) el.classList.add('rv');
-      if (n) {
-        const v = { x: 0 };
-        ctx.add(() => gsap.to(v, { x: 0.888, duration: 1, ease: 'power2.out', onUpdate: () => { n.textContent = v.x.toFixed(3); }, scrollTrigger: { trigger: n, start: 'top 95%', once: true } }));
-      }
-      for (const items of groups) {
-        if (!items.length) continue;
-        await nextTask();
-        if (reduced()) return;
-        ctx.add(() => ScrollTrigger.create({ trigger: items[0], start: 'top 92%', once: true, onEnter: () => ctx.add(() => {
-          gsap.fromTo(items, { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.35, ease: 'power2.out', stagger: { amount: 0.3 } });
-          for (const el of items) el.classList.remove('rv');
-        }) }));
-      }
-    }
-    if (!reduced()) reveal().catch(unhide);
-  </script>
+  </main>
+  <footer>Built with Astro. Every number on this page is a measured one.</footer>
 </Base>
