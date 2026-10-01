@@ -28,7 +28,7 @@ const og = new URL('/og.png', Astro.site).href;
   <meta name="twitter:image" content={og} />
   <!-- html.anim = motion allowed (no OS reduced motion, toggle off). html[data-plain] = plain mode: the
        compact text page only (reduced motion, the toggle, or the "Plain mode" link). -->
-  <script is:inline>(function(){var h=document.documentElement,r=false,p=false;try{r=localStorage.getItem('motion')==='reduce';p=sessionStorage.getItem('plain')==='1'}catch(e){}if(r)h.dataset.motion='reduce';if(!r&&!matchMedia('(prefers-reduced-motion: reduce)').matches)h.classList.add('anim');else p=true;if(p)h.dataset.plain=''})()</script>
+  <script is:inline>(function(){var h=document.documentElement,r=false,p=false;h.classList.add('js');try{r=localStorage.getItem('motion')==='reduce';p=sessionStorage.getItem('plain')==='1'}catch(e){}if(r)h.dataset.motion='reduce';if(!r&&!matchMedia('(prefers-reduced-motion: reduce)').matches)h.classList.add('anim');else p=true;if(p)h.dataset.plain=''})()</script>
 </head>
 <body>
   <slot />
@@ -87,5 +87,34 @@ const og = new URL('/og.png', Astro.site).href;
   .chips li { font-size: 0.75rem; color: var(--muted); border: 1px solid var(--line); padding: 0 0.45rem; border-radius: 999px; }
   .chips li::before { content: none !important; }
   .rows li { display: grid; grid-template-columns: 6.5rem 1fr; gap: 1rem; }
+  /* the terminal stage: fixed behind a tall scroll track; the transcript scrolls over it at the end */
+  :root { --dock: 6rem; }
+  html:not(.js) .stage, html:not(.js) .dock, html:not(.js) .track { display: none; }
+  .stage { position: fixed; inset: 0 0 var(--dock) 0; z-index: 0; overflow: hidden; background: #020a05; touch-action: pan-y; }
+  .stage > canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .stage > #term { z-index: 1; top: 1.7rem; height: calc(100% - 3.2rem); }
+  .stage::after { content: ""; position: absolute; inset: 0; z-index: 2; pointer-events: none;
+    background: repeating-linear-gradient(to bottom, transparent 0 2px, rgba(0, 0, 0, 0.22) 2px 3px), radial-gradient(ellipse at center, transparent 55%, rgba(0, 0, 0, 0.6)); }
+  .stage[data-live] #term { visibility: hidden; }
+  .stage[data-live]::after { display: none; }
+  #term-in { position: absolute; left: 0; top: 0; width: 1px; height: 1px; padding: 0; border: 0; opacity: 0; font-size: 16px; pointer-events: none; }
+  .tag { position: absolute; z-index: 3; top: 0.5rem; left: 16px; right: 16px; font-size: 0.72rem; color: var(--muted); pointer-events: none; }
+  .hint { position: absolute; z-index: 3; left: 16px; right: 16px; bottom: 0.4rem; text-align: center; font-size: 0.72rem; color: var(--muted); pointer-events: none; }
+  .term-links { position: absolute; z-index: 4; right: 16px; bottom: 1.8rem; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.5rem; max-width: calc(100% - 32px); }
+  .term-links[hidden] { display: none; }
+  .track { height: calc(12 * 70vh + 100vh); }
+  .dock { position: fixed; z-index: 10; left: 0; right: 0; bottom: 0; height: var(--dock); display: grid; align-content: center; gap: 0.45rem; padding: 0.4rem 0 calc(0.4rem + env(safe-area-inset-bottom)); background: var(--bg); border-top: 1px solid var(--line); }
+  .cmds { display: flex; gap: 0.4rem; overflow-x: auto; padding: 0.15rem 16px; scrollbar-width: none; }
+  .cmds::-webkit-scrollbar { display: none; }
+  .cmds button { flex: none; min-height: 2.2rem; padding: 0 0.7rem; border: 1px solid var(--line); border-radius: 6px; background: #0f1519; color: var(--accent); font-size: 0.8rem; white-space: nowrap; }
+  .cmds button:hover { border-color: var(--accent); }
+  .dock nav { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.2rem 1.2rem; font-size: 0.8rem; padding: 0 16px; }
+  .dock nav a, .dock nav button { min-height: 1.6rem; color: var(--muted); }
+  .dock nav a:hover, .dock nav button:hover, .dock nav button[aria-pressed="true"] { color: var(--accent); }
+  html[data-plain] .stage { position: relative; inset: auto; height: min(70vh, 40rem); }
+  html[data-plain] .dock { position: relative; height: auto; }
+  html[data-plain] .track { display: none; }
+  html:not([data-plain]) footer { padding-bottom: calc(var(--dock) + 1.5rem); }
+
   footer { position: relative; z-index: 1; background: var(--bg); padding: 1.5rem 16px 2rem; color: var(--muted); font-size: 0.8rem; border-top: 1px solid var(--line); text-align: center; }
 </style>

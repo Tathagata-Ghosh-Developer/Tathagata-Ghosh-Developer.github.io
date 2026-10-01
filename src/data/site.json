@@ -11,6 +11,7 @@
     "HPC · CUDA · MPI · multi-GPU tensor SVD",
     "Google printed 'Mr. Nasamajh' on my Hash Code certificate. It means clueless. I kept it."
   ],
+  "gpus": "2 nodes x 8 V100-SXM2-32GB",
   "gauges": [
     {
       "n": "90x",

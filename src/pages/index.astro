@@ -7,9 +7,32 @@ import s from '../data/site.json';
 // readers and crawlers, and the page itself under reduced motion.
 const { github, linkedin } = s.links;
 const t = s.thesis;
+const cmds = ['help', 'whoami', 'top', 'ls projects/', 'open hydra', 'nvidia-smi', 'history', 'ssh iiest', 'ssh iisc', 'cat thesis.md', 'cd ~/offduty', 'make chai', 'ride', 'adda', 'sleep', 'sudo hire tathagata', 'exit'];
 ---
 <Base title="Tathagata Ghosh · HPC and GPU computing" description="Tathagata Ghosh, M.Tech CDS at IISc Bangalore. Multi-GPU tensor decompositions, MPI and CUDA, and the numbers behind them.">
-  <a class="skip" href="#plain">Plain mode</a>
+  <a class="skip" id="plain-link" href="#plain">Plain mode</a>
+
+  <!-- The terminal. #hero-visual hosts the 2D canvas (always) and the 3D room (when it may run). -->
+  <div class="stage" id="hero-visual">
+    <canvas id="term" aria-hidden="true"></canvas>
+    <label class="sr" for="term-in">Terminal: type a command such as help, then Enter. Tab completes. Escape leaves the shell.</label>
+    <input id="term-in" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="go" />
+    <p class="tag" aria-hidden="true">Tathagata Ghosh · HPC · GPU · IISc</p>
+    <div class="term-links" id="term-links" hidden></div>
+    <p class="hint" aria-hidden="true">scroll to replay a session · or tap and type</p>
+  </div>
+
+  <div class="dock">
+    <div class="cmds" role="group" aria-label="Commands">{cmds.map((c) => <button type="button" data-cmd={c}>{c}</button>)}</div>
+    <nav aria-label="Site">
+      <button type="button" id="plain-btn">plain mode</button>
+      <button type="button" id="motion-btn" aria-pressed="false">reduce motion</button>
+      <a href={github}>GitHub</a>
+      <a href={linkedin}>LinkedIn</a>
+    </nav>
+  </div>
+  <div class="track" id="track" aria-hidden="true"></div>
+  <div class="sr" id="term-log" aria-live="polite"></div>
 
   <main class="plain" id="plain">
     <div class="wrap">
@@ -84,3 +107,25 @@ const t = s.thesis;
   </main>
   <footer>Built with Astro. Every number on this page is a measured one.</footer>
 </Base>
+
+<script>
+  import '../lib/term';
+  // Plain mode and reduce motion are page modes: flip the flag and reload (sessionStorage / localStorage, try/catch).
+  const h = document.documentElement, isPlain = h.hasAttribute('data-plain'), reduced = h.dataset.motion === 'reduce';
+  const os = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const save = (st: Storage, k: string, v: string | null) => { try { v === null ? st.removeItem(k) : st.setItem(k, v); } catch {} };
+  const plainLink = document.getElementById('plain-link') as HTMLAnchorElement, plainBtn = document.getElementById('plain-btn')!;
+  const motionBtn = document.getElementById('motion-btn')!;
+  if (isPlain && !reduced && !os) { plainLink.textContent = 'Terminal mode'; plainBtn.textContent = 'terminal mode'; }
+  motionBtn.setAttribute('aria-pressed', String(reduced));
+  const togglePlain = (e: Event) => {
+    if (isPlain && (reduced || os)) return; // plain is the only mode here: the link just jumps to the transcript
+    e.preventDefault();
+    save(sessionStorage, 'plain', isPlain ? null : '1');
+    location.href = location.pathname + (isPlain ? '' : '#plain');
+    location.reload();
+  };
+  plainLink.addEventListener('click', togglePlain);
+  plainBtn.addEventListener('click', togglePlain);
+  motionBtn.addEventListener('click', () => { save(localStorage, 'motion', reduced ? null : 'reduce'); save(sessionStorage, 'plain', null); location.reload(); });
+</script>
