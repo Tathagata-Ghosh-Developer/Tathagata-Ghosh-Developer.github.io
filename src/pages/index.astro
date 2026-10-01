@@ -1,6 +1,7 @@
 ---
 import Base from '../layouts/Base.astro';
 import s from '../data/site.json';
+import Scene from '../components/Scene.tsx';
 
 // Every fact and number comes from site.json (built from the master profile outside this repo).
 // This file is the plain mode: the whole site as a compact transcript, always in the DOM for screen
@@ -14,6 +15,7 @@ const cmds = ['help', 'whoami', 'top', 'ls projects/', 'open hydra', 'nvidia-smi
 
   <!-- The terminal. #hero-visual hosts the 2D canvas (always) and the 3D room (when it may run). -->
   <div class="stage" id="hero-visual">
+    <Scene client:idle />
     <canvas id="term" aria-hidden="true"></canvas>
     <label class="sr" for="term-in">Terminal: type a command such as help, then Enter. Tab completes. Escape leaves the shell.</label>
     <input id="term-in" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="go" />

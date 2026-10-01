@@ -10,6 +10,8 @@ A static site built with [Astro](https://astro.build). Every fact and number com
 
 The page is a terminal: a working shell you can type into (`help`, `whoami`, `top`, `ls projects/`, `open hydra`, `nvidia-smi`, `history`, `ssh iiest`, `cat thesis.md`, `cd ~/offduty`, `make chai`, `adda`, `sudo hire tathagata`, `exit`, with Tab completion and up/down history), and a recorded session that types itself as you scroll (GSAP ScrollTrigger scrubbing a tall scroll track). Typing pauses the replay; scrolling resumes it. On phones, tapping the screen opens the keyboard and a row of command chips covers the common commands. The terminal is drawn by a small renderer on a 2D `<canvas>`, so it works without WebGL. The hidden `<input>` is the real focus target, output is also announced through an `aria-live` region, and Esc leaves the shell.
 
+When the device allows it, one React island (`src/components/Scene.tsx`, `client:idle`) puts the terminal inside a small 3D room: the canvas becomes a `CanvasTexture` on the curved screen of a CRT on a desk, next to a keyboard, a chai cup, a bicycle and a window with a moon, all built from primitives. One full-screen shader adds barrel distortion, scanlines, vignette, grain and a cheap bloom. Each command moves the camera (seat, desk, room, chai cup, bicycle). Three.js and react-three-fiber load by dynamic `import()` only after the first paint, the load event and an idle callback, and only without reduced motion, outside plain mode, with more than 4 CPU cores and WebGL 2; otherwise (or if the WebGL context is lost) the 2D terminal stays.
+
 The same content is always in the DOM as a compact plain-text transcript ("plain mode", the first Tab stop), which is also the whole page under reduced motion.
 
 ## Build
@@ -32,14 +34,15 @@ Pushing to `main` deploys to GitHub Pages through `.github/workflows/deploy.yml`
 - `src/pages/index.astro`: the page (terminal stage, command chips, scroll track) and the plain-mode transcript.
 - `src/lib/term.ts`: the terminal: canvas renderer, shell commands, completion, history, boot and scroll replay.
 - `src/lib/store.ts`: the scene store the terminal writes and the 3D room reads.
+- `src/components/Scene.tsx`: the 3D room, CRT, post pass and camera rig.
 - `src/pages/404.astro`: the not-found page.
 - `public/og.png`: link-preview image (1200x630, rendered from HTML with headless Chrome).
 
 ## Credits
 
-Built with Astro, `@astrojs/sitemap` and [GSAP](https://gsap.com) with ScrollTrigger.
+Built with Astro, `@astrojs/sitemap`, `@astrojs/react`, React, [Three.js](https://threejs.org), [react-three-fiber](https://github.com/pmndrs/react-three-fiber) and [GSAP](https://gsap.com) with ScrollTrigger.
 
-Techniques adapted from ThreeUI by Meng To (MIT, https://github.com/MengTo/threeui; its npm package is not used): the boot progress bar follows "Uplink Loader" (a tick bar filling to 100 % with a glowing readout) and the `top` gauges follow "Diagnostics Panel" (segmented bars with value and label).
+Techniques adapted from ThreeUI by Meng To (MIT, https://github.com/MengTo/threeui; its npm package is not used): the boot progress bar follows "Uplink Loader" (a tick bar filling to 100 % with a glowing readout) and the `top` gauges follow "Diagnostics Panel" (segmented bars with value and label); the CRT shaders take the barrel curvature, sine scanlines and flicker from "Void Protocol" (the `predictive-arc` sources) and the vignette and grain from "Matrix Field". ThreeUI is copyright (c) 2026 Meng To under the MIT licence.
 
 ## Licence
 
