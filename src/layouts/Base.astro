@@ -98,6 +98,7 @@ const og = new URL('/og.png', Astro.site).href;
     background: repeating-linear-gradient(to bottom, transparent 0 2px, rgba(0, 0, 0, 0.22) 2px 3px), radial-gradient(ellipse at center, transparent 55%, rgba(0, 0, 0, 0.6)); }
   .stage[data-live] #term { visibility: hidden; }
   .stage[data-live]::after { display: none; }
+  .stage:has(#term-in:focus-visible)::before { content: ""; position: absolute; inset: 4px; z-index: 5; border: 2px solid var(--accent); border-radius: 6px; pointer-events: none; }
   #term-in { position: absolute; left: 0; top: 0; width: 1px; height: 1px; padding: 0; border: 0; opacity: 0; font-size: 16px; pointer-events: none; }
   .tag { position: absolute; z-index: 3; top: 0.5rem; left: 16px; right: 16px; font-size: 0.72rem; color: var(--muted); pointer-events: none; }
   .hint { position: absolute; z-index: 3; left: 16px; right: 16px; bottom: 0.4rem; text-align: center; font-size: 0.72rem; color: var(--muted); pointer-events: none; }

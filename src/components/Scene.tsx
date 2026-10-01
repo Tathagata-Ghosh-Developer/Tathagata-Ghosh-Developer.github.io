@@ -22,9 +22,9 @@ function allowed() {
     if (h.dataset.motion === 'reduce' || h.hasAttribute('data-plain')) return false;
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) return false;
     if (!(navigator.hardwareConcurrency > 4)) return false;
-    const gl = document.createElement('canvas').getContext('webgl2');
-    gl?.getExtension('WEBGL_lose_context')?.loseContext();
-    return !!gl;
+    // No throwaway probe context (it costs a ~100 ms task): the real context is created once, below,
+    // and a null context falls back to the 2D terminal.
+    return 'WebGL2RenderingContext' in window;
   } catch {
     return false;
   }
@@ -38,6 +38,13 @@ export default function Scene() {
     let term: any;
     import('../lib/term')
       .then((m) => { term = m.term; return m.painted(); })
+      // then the first interaction (the 2D terminal is already working) or 4 s of quiet, whichever is first
+      .then(() => new Promise<void>((r) => {
+        const ev = ['pointermove', 'pointerdown', 'touchstart', 'wheel', 'scroll', 'keydown'];
+        const go = () => { clearTimeout(t); ev.forEach((e) => removeEventListener(e, go)); r(); };
+        const t = setTimeout(go, 4000);
+        ev.forEach((e) => addEventListener(e, go, { passive: true }));
+      }))
       .then(() => Promise.all([import('three'), import('@react-three/fiber')]))
       .then(async ([THREE, fiber]) => {
         await nextTask(); // build the room in its own task, before React mounts the canvas
@@ -55,7 +62,10 @@ export default function Scene() {
       flat
       gl={async (defaults: any) => {
         await nextTask(); // create the WebGL context in its own task
-        return new lib.THREE.WebGLRenderer({ ...defaults, antialias: false, alpha: false, powerPreference: 'low-power' });
+        const opts = { antialias: false, alpha: false, powerPreference: 'low-power' as const };
+        const context = defaults.canvas.getContext('webgl2', opts);
+        if (!context) { lost.current = true; lib.term.texture(false); setLib({ ...lib }); return new Promise(() => {}); }
+        return new lib.THREE.WebGLRenderer({ ...defaults, ...opts, context });
       }}
       camera={{ fov: 40, near: 0.05, far: 30, position: [0, 1.1, 1.4] }}
       onCreated={({ gl }: any) => gl.domElement.addEventListener('webglcontextlost', () => {
@@ -294,11 +304,9 @@ function build(THREE: any, term: any) {
         vec2 uv = vUv + c * dot(c, c) * (0.06 + 0.3 * uDive);               // barrel, stronger as the camera dives in
         if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) { gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0); return; }
         vec3 col = texture2D(tScene, uv).rgb;
-        vec2 px = 1.0 / uRes; vec3 b = vec3(0.0);                           // bloom-lite: 8 taps at two radii
-        for (int i = 0; i < 8; i++) {
-          float a = float(i) * 0.7854; vec2 o = vec2(cos(a), sin(a)) * px;
-          b += max(texture2D(tScene, uv + o * 5.0).rgb - 0.5, 0.0) + 0.6 * max(texture2D(tScene, uv + o * 12.0).rgb - 0.5, 0.0);
-        }
+        vec2 px = 1.0 / uRes; vec3 b = vec3(0.0);                           // bloom-lite: 8 directions at two radii (unrolled)
+        #define TAP(x, y) b += max(texture2D(tScene, uv + vec2(x, y) * px * 5.0).rgb - 0.5, 0.0) + 0.6 * max(texture2D(tScene, uv + vec2(x, y) * px * 12.0).rgb - 0.5, 0.0);
+        TAP(1.0, 0.0) TAP(-1.0, 0.0) TAP(0.0, 1.0) TAP(0.0, -1.0) TAP(0.707, 0.707) TAP(-0.707, 0.707) TAP(0.707, -0.707) TAP(-0.707, -0.707)
         col += b * 0.16;
         col *= 0.94 + 0.06 * sin(gl_FragCoord.y * 3.14159);                // scanlines
         col *= 1.0 - smoothstep(0.45, 0.95, length(c * vec2(1.0, 0.9)) * 1.25); // vignette
@@ -344,28 +352,37 @@ function World({ lib }: { lib: any }) {
     st.current.tgt = new THREE.Vector3(0, SCREEN_Y, SCREEN_Z);
     s3.background = new THREE.Color('#05070a');
     nextTask()
-      .then(() => alive && gl.compileAsync(w.root, camera, s3))
+      // compile with the render target bound: the room renders into it (linear output), so the programs match
+      .then(() => { if (!alive) return; gl.setRenderTarget(w.rt); const p = gl.compileAsync(w.root, camera, s3); gl.setRenderTarget(null); return p; })
+      .then(() => alive && gl.compileAsync(w.postScene, w.postCam)) // the post shader too, not on the first frame
       .catch(() => {})
-      .then(() => { if (alive) { s3.add(w.root); st.current.ready = true; } })
+      // first-use uploads, each in its own task: the terminal texture, then one warm-up render of the room
+      .then(nextTask).then(() => alive && gl.initTexture(w.map))
+      .then(nextTask).then(() => { if (!alive) return; s3.add(w.root); gl.setRenderTarget(w.rt); gl.render(s3, camera); gl.setRenderTarget(null); })
+      .then(nextTask).then(() => { if (alive) st.current.ready = true; })
       // then build and compile the two campuses, each in its own task, so `ssh` never stalls a frame
       .then(async () => {
         for (const id of ['iiest', 'iisc'] as const) {
           await nextTask(); if (!alive) return;
           const cp = w.buildCampus(id); cp.g.visible = true;
-          await gl.compileAsync(cp.g, camera, s3).catch(() => {});
+          gl.setRenderTarget(w.rt); const p = gl.compileAsync(cp.g, camera, s3); gl.setRenderTarget(null);
+          await p.catch(() => {});
           cp.g.visible = cp.p > 0;
         }
       });
+    // where the transcript has covered the stage (measured once and on resize, not every frame)
+    const measure = () => { const el = document.getElementById('track')!; w.trackEnd = el.offsetTop + el.offsetHeight; };
+    measure(); addEventListener('resize', measure);
     const move = (e: PointerEvent) => { st.current.px = e.clientX / innerWidth - 0.5; st.current.py = e.clientY / innerHeight - 0.5; };
     addEventListener('pointermove', move, { passive: true });
-    return () => { alive = false; s3.remove(w.root); removeEventListener('pointermove', move); live(false); term.texture(false); };
+    return () => { alive = false; s3.remove(w.root); removeEventListener('pointermove', move); removeEventListener('resize', measure); live(false); term.texture(false); };
   }, []);
 
   fiber.useFrame((state: any, delta: number) => {
     const c = st.current, { gl, camera, scene: s3 } = state, dt = Math.min(delta, 0.1), t = state.clock.elapsedTime, now = performance.now();
     if (!c.ready) return;
     // the transcript covers the stage at the end of the page: skip the work
-    if (document.getElementById('track')!.getBoundingClientRect().bottom < 0) return;
+    if (scrollY > w.trackEnd) return;
 
     // terminal texture: re-upload when the canvas changed; rebuild the CRT if its aspect changed
     if (c.tex !== scene.tex) {

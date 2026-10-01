@@ -434,9 +434,12 @@ if (!still()) setInterval(() => { if (!document.hidden) { blink = !blink; kick()
 // Idle: after a minute without input the room falls asleep, as you do.
 setInterval(() => { if (!plain() && !still() && !scene.sleep && performance.now() - scene.lastInput > 60000) { set({ sleep: true }); say('(idle) the room fell asleep. any key wakes it.', 1); kick(); } }, 5000);
 
-// The replay: GSAP ScrollTrigger scrubs a progress value over the tall #track, after first paint and idle.
-painted().then(() => {
-  if (plain()) return;
+// The replay: GSAP ScrollTrigger scrubs a progress value over the tall #track. It loads after first paint
+// and idle, and only once the visitor first scrolls, swipes or presses a key (nothing to replay before that).
+const firsts = ['scroll', 'wheel', 'touchstart', 'keydown'];
+const go = () => { firsts.forEach((e) => removeEventListener(e, go)); replayOn(); };
+painted().then(() => { if (!plain()) { firsts.forEach((e) => addEventListener(e, go, { passive: true })); if (scrollY > 0) go(); } });
+function replayOn() {
   return Promise.all([import('gsap'), import('gsap/ScrollTrigger')]).then(([g, st]) => {
     const { gsap } = g, { ScrollTrigger } = st;
     gsap.registerPlugin(ScrollTrigger);
@@ -446,4 +449,4 @@ painted().then(() => {
       scrollTrigger: { trigger: '#track', start: 'top top', end: 'bottom bottom', scrub: 0.4, onUpdate: (e: any) => set({ vel: e.getVelocity() }) },
     });
   });
-});
+}
